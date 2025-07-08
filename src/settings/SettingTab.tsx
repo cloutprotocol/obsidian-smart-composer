@@ -18,7 +18,12 @@ export class SmartComposerSettingTab extends PluginSettingTab {
     const { containerEl } = this
     containerEl.empty()
 
-    this.root = createRoot(containerEl)
+    // Only create a new root if one doesn't already exist.
+    // This prevents errors when the settings tab is re-displayed.
+    if (!this.root) {
+      this.root = createRoot(containerEl)
+    }
+    
     this.root.render(
       <SettingsProvider
         settings={this.plugin.settings}
@@ -36,11 +41,11 @@ export class SmartComposerSettingTab extends PluginSettingTab {
     if (this.root) {
       // Defer the unmount to avoid a race condition where React tries to
       // unmount a component tree while it's still in the middle of a render.
-      // This is a common issue when integrating React with non-React libraries
-      // or in environments like Obsidian's settings tabs.
       setTimeout(() => {
-        this.root?.unmount()
-        this.root = null
+        if (this.root) {
+          this.root.unmount()
+          this.root = null
+        }
       }, 0)
     }
   }

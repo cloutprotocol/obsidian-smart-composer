@@ -192,14 +192,15 @@ export class DropdownComponent extends Component {
 export class ToggleComponent extends Component {
     toggleEl: HTMLElement;
     private inputEl: HTMLInputElement;
+    private sliderEl: HTMLDivElement;
 
     constructor(containerEl: HTMLElement) {
         super();
-        // This component was also empty. It's now implemented to create a
-        // real checkbox-based toggle. The `ObsidianToggle` React component
-        // relies on the `toggleEl` property for cleanup and management.
-        this.toggleEl = containerEl.createEl('div', { cls: 'setting-toggle' });
-        this.inputEl = this.toggleEl.createEl('input', {type: 'checkbox'});
+        // Refactored to produce the structure needed for the iOS-style toggle.
+        // The structure is now a container with a hidden checkbox and a visual 'slider'.
+        this.toggleEl = containerEl.createEl('div', { cls: 'checkbox-container' });
+        this.inputEl = this.toggleEl.createEl('input', { type: 'checkbox' });
+        this.sliderEl = this.toggleEl.createEl('div', { cls: 'slider round' });
     }
     setValue(value: boolean) {
         this.inputEl.checked = value;
