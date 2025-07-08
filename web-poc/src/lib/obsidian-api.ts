@@ -82,10 +82,18 @@ export function htmlToMarkdown(html: string): string {
     return html; // Passthrough mock
 }
 
-export function MarkdownRenderer(app: App, markdown: string, el: HTMLElement, sourcePath: string, component: Component) {
-    console.log("[Mock API] MarkdownRenderer called");
-    el.innerHTML = markdown; // Extremely simplified version
-}
+/**
+ * In the real Obsidian API, `MarkdownRenderer` is a static class or namespace
+ * with a `render` method. Our original implementation was a standalone function,
+ * which caused a `TypeError` when components tried to call `MarkdownRenderer.render`.
+ * This has been corrected to match the expected API structure.
+ */
+export const MarkdownRenderer = {
+    render: (app: App, markdown: string, el: HTMLElement, sourcePath: string, component: Component) => {
+        console.log("[Mock API] MarkdownRenderer.render called");
+        el.innerHTML = markdown; // Extremely simplified version
+    }
+};
 
 export const Platform = {
     isMobile: false,
