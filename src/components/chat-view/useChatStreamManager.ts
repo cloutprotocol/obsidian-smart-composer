@@ -38,7 +38,7 @@ export function useChatStreamManager({
 }: UseChatStreamManagerParams): UseChatStreamManager {
   const app = useApp()
   const { settings } = useSettings()
-  const { getMcpManager } = useMcp()
+  const { getMcpManager } = useMcp() || {}
 
   const activeStreamAbortControllersRef = useRef<AbortController[]>([])
 
@@ -77,13 +77,18 @@ export function useChatStreamManager({
       let unsubscribeResponseGenerator: (() => void) | undefined
 
       try {
-        const mcpManager = await getMcpManager()
+        // MCP (and thus tools) may not be available in all environments (e.g., web-poc).
+        // Conditionally get the manager only if tools are enabled and the context provider exists.
+        const mcpManager =
+          settings.chatOptions.enableTools && getMcpManager
+            ? await getMcpManager()
+            : undefined
         const responseGenerator = new ResponseGenerator({
           providerClient,
           model,
           messages: chatMessages,
           conversationId,
-          enableTools: settings.chatOptions.enableTools,
+          enableTools: settings.chatOptions.enableTools && !!mcpManager,
           maxAutoIterations: settings.chatOptions.maxAutoIterations,
           promptGenerator,
           mcpManager,

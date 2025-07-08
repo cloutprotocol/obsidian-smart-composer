@@ -13,7 +13,7 @@ export default function ToolBadge() {
   const plugin = usePlugin()
   const app = useApp()
   const { settings, setSettings } = useSettings()
-  const { getMcpManager } = useMcp()
+  const { getMcpManager } = useMcp() || {}
 
   const [mcpManager, setMcpManager] = useState<McpManager | null>(null)
   const [toolCount, setToolCount] = useState(0)
@@ -37,6 +37,10 @@ export default function ToolBadge() {
   )
 
   useEffect(() => {
+    if (!getMcpManager) {
+      setToolCount(0)
+      return
+    }
     const initMCPManager = async () => {
       const mcpManager = await getMcpManager()
       setMcpManager(mcpManager)

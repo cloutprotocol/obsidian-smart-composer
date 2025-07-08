@@ -228,9 +228,10 @@ function useToolCall(
   onResponseUpdate: (response: ToolCallResponse) => void,
 ) {
   const { settings, setSettings } = useSettings()
-  const { getMcpManager } = useMcp()
+  const { getMcpManager } = useMcp() || {}
 
   const handleToolCall = useCallback(async () => {
+    if (!getMcpManager) return
     const mcpManager = await getMcpManager()
     onResponseUpdate({
       status: ToolCallResponseStatus.Running,
@@ -244,6 +245,7 @@ function useToolCall(
   }, [request, onResponseUpdate, getMcpManager])
 
   const handleAllowForConversation = useCallback(async () => {
+    if (!getMcpManager) return
     const mcpManager = await getMcpManager()
     mcpManager.allowToolForConversation(request.name, conversationId)
   }, [request, conversationId, getMcpManager])

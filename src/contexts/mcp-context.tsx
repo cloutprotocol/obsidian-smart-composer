@@ -7,6 +7,7 @@ import {
 } from 'react'
 
 import { McpManager } from '../core/mcp/mcpManager'
+import { usePlugin } from './plugin-context'
 
 export type McpContextType = {
   getMcpManager: () => Promise<McpManager>
@@ -17,12 +18,25 @@ const McpContext = createContext<McpContextType | null>(null)
 export function McpProvider({
   getMcpManager,
   children,
-}: PropsWithChildren<{ getMcpManager: () => Promise<McpManager> }>) {
+}: PropsWithChildren<{ getMcpManager?: () => Promise<McpManager> }>) {
+  const plugin = usePlugin()
+
+  // For the web-poc, we provide a null McpManager to gracefully disable MCP.
+  // Consumers of the context should handle this null case.
+  if (plugin.app.isPoc) {
+    return <McpContext.Provider value={null}>{children}</McpContext.Provider>
+  }
+
   useEffect(() => {
-    void getMcpManager()
+    if (getMcpManager) {
+      void getMcpManager()
+    }
   }, [getMcpManager])
 
   const value = useMemo(() => {
+    if (!getMcpManager) {
+      return null
+    }
     return { getMcpManager }
   }, [getMcpManager])
 
@@ -31,8 +45,5 @@ export function McpProvider({
 
 export function useMcp() {
   const context = useContext(McpContext)
-  if (!context) {
-    throw new Error('useMcp must be used within a McpProvider')
-  }
   return context
 }

@@ -27,7 +27,8 @@ export type ResponseGeneratorParams = {
   enableTools: boolean
   maxAutoIterations: number
   promptGenerator: PromptGenerator
-  mcpManager: McpManager
+  // `mcpManager` is optional to support environments where tools are disabled (e.g., web-poc).
+  mcpManager?: McpManager
   abortSignal?: AbortSignal
 }
 
@@ -37,7 +38,7 @@ export class ResponseGenerator {
   private readonly conversationId: string
   private readonly enableTools: boolean
   private readonly promptGenerator: PromptGenerator
-  private readonly mcpManager: McpManager
+  private readonly mcpManager?: McpManager
   private readonly abortSignal?: AbortSignal
   private readonly receivedMessages: ChatMessage[]
   private readonly maxAutoIterations: number
@@ -71,6 +72,16 @@ export class ResponseGenerator {
       if (toolCallRequests.length === 0) {
         return
       }
+      if (!this.mcpManager) {
+        // This should not happen, since tool calls are only requested when MCP is available
+        // But we add this check for type safety
+        console.warn(
+          'Tool calls were requested, but MCP manager is not available',
+        )
+        return
+      }
+
+      const mcpManager = this.mcpManager
 
       const toolMessage: ChatToolMessage = {
         role: 'tool' as const,
@@ -78,7 +89,7 @@ export class ResponseGenerator {
         toolCalls: toolCallRequests.map((toolCall) => ({
           request: toolCall,
           response: {
-            status: this.mcpManager.isToolExecutionAllowed({
+            status: mcpManager.isToolExecutionAllowed({
               requestToolName: toolCall.name,
               conversationId: this.conversationId,
             })
@@ -97,7 +108,7 @@ export class ResponseGenerator {
               toolCall.response.status === ToolCallResponseStatus.Running,
           )
           .map(async (toolCall) => {
-            const response = await this.mcpManager.callTool({
+            const response = await mcpManager.callTool({
               name: toolCall.request.name,
               args: toolCall.request.arguments,
               id: toolCall.request.id,
@@ -148,19 +159,20 @@ export class ResponseGenerator {
       messages: [...this.receivedMessages, ...this.responseMessages],
     })
 
-    const tools: RequestTool[] | undefined = this.enableTools
-      ? (await this.mcpManager.listAvailableTools()).map((tool) => ({
-          type: 'function',
-          function: {
-            name: tool.name,
-            description: tool.description,
-            parameters: {
-              ...tool.inputSchema,
-              properties: tool.inputSchema.properties ?? {},
+    const tools: RequestTool[] | undefined =
+      this.enableTools && this.mcpManager
+        ? (await this.mcpManager.listAvailableTools()).map((tool) => ({
+            type: 'function',
+            function: {
+              name: tool.name,
+              description: tool.description,
+              parameters: {
+                ...tool.inputSchema,
+                properties: tool.inputSchema.properties ?? {},
+              },
             },
-          },
-        }))
-      : undefined
+          }))
+        : undefined
 
     const stream = await this.providerClient.streamResponse(
       this.model,

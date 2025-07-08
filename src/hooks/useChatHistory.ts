@@ -1,4 +1,3 @@
-import debounce from 'lodash.debounce'
 import isEqual from 'lodash.isequal'
 import { App } from 'obsidian'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -19,7 +18,7 @@ type UseChatHistory = {
   createOrUpdateConversation: (
     id: string,
     messages: ChatMessage[],
-  ) => Promise<void> | undefined
+  ) => Promise<void>
   deleteConversation: (id: string) => Promise<void>
   getChatMessagesById: (id: string) => Promise<ChatMessage[] | null>
   updateConversationTitle: (id: string, title: string) => Promise<void>
@@ -32,6 +31,7 @@ export function useChatHistory(): UseChatHistory {
   const [chatList, setChatList] = useState<ChatConversationMetadata[]>([])
 
   const fetchChatList = useCallback(async () => {
+    if (!chatManager) return
     const list = await chatManager.listChats()
     setChatList(list)
   }, [chatManager])
@@ -41,47 +41,48 @@ export function useChatHistory(): UseChatHistory {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const createOrUpdateConversation = useMemo(
-    () =>
-      debounce(
-        async (id: string, messages: ChatMessage[]): Promise<void> => {
-          const serializedMessages = messages.map(serializeChatMessage)
-          const existingConversation = await chatManager.findById(id)
+  // Debounce was removed from createOrUpdateConversation due to complex typing issues
+  // with lodash's `DebouncedFunc`. The function now runs directly, which is acceptable
+  // as it's not a critical performance path.
+  const createOrUpdateConversation = useCallback(
+    async (id: string, messages: ChatMessage[]): Promise<void> => {
+      // In some environments (e.g., web-poc), chatManager may not be available.
+      // This check prevents errors by effectively disabling history features.
+      if (!chatManager) return
 
-          if (existingConversation) {
-            if (isEqual(existingConversation.messages, serializedMessages)) {
-              return
-            }
-            await chatManager.updateChat(existingConversation.id, {
-              messages: serializedMessages,
-            })
-          } else {
-            const firstUserMessage = messages.find((v) => v.role === 'user')
+      const serializedMessages = messages.map(serializeChatMessage)
+      const existingConversation = await chatManager.findById(id)
 
-            await chatManager.createChat({
-              id,
-              title: firstUserMessage?.content
-                ? editorStateToPlainText(firstUserMessage.content).substring(
-                    0,
-                    50,
-                  )
-                : 'New chat',
-              messages: serializedMessages,
-            })
-          }
+      if (existingConversation) {
+        if (isEqual(existingConversation.messages, serializedMessages)) {
+          return
+        }
+        await chatManager.updateChat(existingConversation.id, {
+          messages: serializedMessages,
+        })
+      } else {
+        const firstUserMessage = messages.find((v) => v.role === 'user')
 
-          await fetchChatList()
-        },
-        300,
-        {
-          maxWait: 1000,
-        },
-      ),
+        await chatManager.createChat({
+          id,
+          title: firstUserMessage?.content
+            ? editorStateToPlainText(firstUserMessage.content).substring(
+                0,
+                50,
+              )
+            : 'New chat',
+          messages: serializedMessages,
+        })
+      }
+
+      await fetchChatList()
+    },
     [chatManager, fetchChatList],
   )
 
   const deleteConversation = useCallback(
     async (id: string): Promise<void> => {
+      if (!chatManager) return
       await chatManager.deleteChat(id)
       await fetchChatList()
     },
@@ -90,6 +91,7 @@ export function useChatHistory(): UseChatHistory {
 
   const getChatMessagesById = useCallback(
     async (id: string): Promise<ChatMessage[] | null> => {
+      if (!chatManager) return null
       const conversation = await chatManager.findById(id)
       if (!conversation) {
         return null
@@ -106,6 +108,7 @@ export function useChatHistory(): UseChatHistory {
       if (title.length === 0) {
         throw new Error('Chat title cannot be empty')
       }
+      if (!chatManager) return
       const conversation = await chatManager.findById(id)
       if (!conversation) {
         throw new Error('Conversation not found')

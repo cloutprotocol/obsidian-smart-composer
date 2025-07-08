@@ -32,13 +32,14 @@ import {
 import { YoutubeTranscript, isYoutubeUrl } from './youtube-transcript'
 
 export class PromptGenerator {
-  private getRagEngine: () => Promise<RAGEngine>
+  private getRagEngine?: () => Promise<RAGEngine>
   private app: App
   private settings: SmartComposerSettings
   private MAX_CONTEXT_MESSAGES = 20
 
   constructor(
-    getRagEngine: () => Promise<RAGEngine>,
+    // `getRagEngine` is optional to support environments where RAG is disabled (e.g., web-poc).
+    getRagEngine: (() => Promise<RAGEngine>) | undefined,
     app: App,
     settings: SmartComposerSettings,
   ) {
@@ -302,10 +303,12 @@ ${message.annotations
         }
         return false
       }
-      const shouldUseRAG = useVaultSearch || (await exceedsTokenThreshold())
+      const shouldUseRAG =
+        (useVaultSearch || (await exceedsTokenThreshold())) &&
+        !!this.getRagEngine
 
       let filePrompt: string
-      if (shouldUseRAG) {
+      if (shouldUseRAG && this.getRagEngine) {
         similaritySearchResults = useVaultSearch
           ? await (
               await this.getRagEngine()

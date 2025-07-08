@@ -492,6 +492,7 @@ export class App {
     public workspace: Workspace;
     private viewRegistry: Map<string, any> = new Map();
     private commands: any[] = [];
+    public readonly isPoc: boolean = true; // Flag to identify the POC environment
 
     // Add missing properties to satisfy the obsidian.App interface
     public keymap: any = {};

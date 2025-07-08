@@ -85,8 +85,10 @@ export type ChatProps = {
 const Chat = forwardRef<ChatRef, ChatProps>((props, ref) => {
   const app = useApp()
   const { settings } = useSettings()
-  const { getRAGEngine } = useRAG()
-  const { getMcpManager } = useMcp()
+  // In the web-poc, RAG and MCP contexts can be null.
+  // The empty object fallback prevents a destructuring error.
+  const { getRAGEngine } = useRAG() || {}
+  const { getMcpManager } = useMcp() || {}
 
   const {
     createOrUpdateConversation,
@@ -351,6 +353,7 @@ const Chat = forwardRef<ChatRef, ChatProps>((props, ref) => {
         // This likely means a new message was submitted while this stream was running.
         // Abort the tool calls and keep the current chat history.
         void (async () => {
+          if (!getMcpManager) return
           const mcpManager = await getMcpManager()
           toolMessage.toolCalls.forEach((toolCall) => {
             mcpManager.abortToolCall(toolCall.request.id)
