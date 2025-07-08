@@ -1,38 +1,73 @@
-import React, { useState, useEffect } from 'react';
-import { app } from '../lib/obsidian-api';
+import React, { useState, useRef, useEffect } from 'react';
+import { app, PluginSettingTab } from '../lib/obsidian-api';
 import './SettingsModal.css';
-import { PluginSettingTab } from '../lib/obsidian-api';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
   const [activeTab, setActiveTab] = useState<PluginSettingTab | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
+  const settingTabs = app.settingTabs;
+
+  // Effect to manage the active tab based on the modal's open state.
   useEffect(() => {
-    // When the modal is opened, if there's no active tab, set the first one.
-    if (isOpen && !activeTab && app.settingTabs.length > 0) {
-      setActiveTab(app.settingTabs[0]);
+    if (isOpen) {
+      // When the modal opens, set the first available tab as active.
+      if (settingTabs.length > 0) {
+        setActiveTab(settingTabs[0]);
+      }
+    } else {
+      // When the modal closes, clear the active tab. The display effect's
+      // cleanup function will then handle hiding the content.
+      setActiveTab(null);
     }
-    // Reset active tab when modal is closed to ensure it's fresh on reopen
-    if (!isOpen) {
-        setActiveTab(null);
+  }, [isOpen, settingTabs]);
+
+  // Effect to render the content of the active tab. This is the core
+  // of the declarative approach.
+  useEffect(() => {
+    if (activeTab && contentRef.current) {
+      // Clear previous content to ensure a clean state for the new tab.
+      contentRef.current.innerHTML = '';
+
+      // The plugin's setting tab expects its `containerEl` to be set before
+      // `display()` is called.
+      activeTab.containerEl = contentRef.current;
+      activeTab.display();
     }
-  }, [isOpen, activeTab]);
+
+    // The cleanup function is critical. It runs when `activeTab` changes
+    // or when the component unmounts. This is the correct, safe place
+    // to hide the previous tab's content.
+    return () => {
+      activeTab?.hide();
+    };
+  }, [activeTab]); // This effect depends *only* on the active tab.
 
   if (!isOpen) {
     return null;
   }
 
   const handleTabClick = (tab: PluginSettingTab) => {
+    // By simply updating the state, we let the useEffect hooks handle the
+    // hide/display logic. This is the declarative React way and avoids
+    // potential race conditions from manual, imperative calls.
     setActiveTab(tab);
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-content"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
           <h2>Settings</h2>
           <button onClick={onClose} className="modal-close-button">
@@ -40,9 +75,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </button>
         </div>
         <div className="modal-body">
-          <nav className="modal-nav">
-            <div className="settings-nav-header">Plugins</div>
-            {app.settingTabs.map((tab) => (
+          <div className="modal-nav">
+            <div className="settings-nav-header">Plugin Settings</div>
+            {settingTabs.map((tab) => (
               <div
                 key={tab.id}
                 className={`modal-nav-item ${
@@ -53,38 +88,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 {tab.name}
               </div>
             ))}
-          </nav>
-          <div className="modal-main">
-            {activeTab && <SettingsContent tab={activeTab} />}
+          </div>
+          <div className="modal-main" ref={contentRef}>
+            {/* Content is rendered here by the plugin's display() method */}
           </div>
         </div>
       </div>
     </div>
   );
 };
-
-interface SettingsContentProps {
-  tab: PluginSettingTab;
-}
-
-const SettingsContent: React.FC<SettingsContentProps> = ({ tab }) => {
-  const contentRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    if (tab && contentRef.current) {
-      const container = contentRef.current;
-      // Assign the container, then call display()
-      tab.containerEl = container;
-      tab.display();
-
-      // Return a cleanup function to call hide().
-      // The hide() method is solely responsible for cleanup.
-      // The previous manual DOM clearing was causing the flashing.
-      return () => {
-        tab.hide();
-      };
-    }
-  }, [tab]); // Rerun effect when the tab changes
-
-  return <div ref={contentRef} />;
-}; 
