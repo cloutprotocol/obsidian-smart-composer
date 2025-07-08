@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FileTreeView } from './components/FileTreeView';
 import { MarkdownEditor } from './components/MarkdownEditor';
 import { SettingsModal } from './components/SettingsModal';
-import { app, linkObsidianApiState, Command, Editor, MarkdownView, TFile } from './lib/obsidian-api';
+import { app, initializeFileSystem, Command, Editor, MarkdownView, TFile } from './lib/obsidian-api';
 import SmartComposerPlugin from 'src/main';
 import { WorkspaceLeaf } from './lib/obsidian-api';
 import { ApplyView } from 'src/ApplyView';
@@ -25,6 +25,20 @@ export interface VirtualFile {
 }
 export type FileSystemState = Record<string, VirtualFile>; // filename -> file object
 
+const ActiveLeafRenderer: React.FC<{ activeLeaf: WorkspaceLeaf | null }> = ({ activeLeaf }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (container && activeLeaf?.view.containerEl) {
+      container.innerHTML = ''; // Clear previous view
+      container.appendChild(activeLeaf.view.containerEl);
+    }
+  }, [activeLeaf]);
+
+  return <div ref={containerRef} style={{ height: '100%' }} />;
+};
+
 const App: React.FC = () => {
   const [plugin, setPlugin] = useState<SmartComposerPlugin | null>(null);
   const pluginRef = useRef<SmartComposerPlugin | null>(null);
@@ -36,8 +50,6 @@ const App: React.FC = () => {
     'Another-File.md': { content: '# Another File\n\nSome content here.' },
     'folder/Note-In-Folder.md': { content: '# Another File\n\nSome content here.' },
   });
-  const fileSystemRef = useRef(fileSystem);
-  fileSystemRef.current = fileSystem;
 
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [isRightSidebarVisible, setRightSidebarVisible] = useState(false);
@@ -59,18 +71,20 @@ const App: React.FC = () => {
   }, [activeLeaf]); // Dependency on activeLeaf ensures we always have the latest value
 
   useEffect(() => {
-    // We attach the event listener here and provide the memoized handler.
     app.vault.on('modify', handleFileModify);
 
     return () => {
-      // Cleanup: remove the listener when the component unmounts or dependencies change.
       app.vault.off('modify', handleFileModify);
     };
-  }, [handleFileModify]); // The effect re-runs if the handler function changes.
+  }, [handleFileModify]);
 
 
   useEffect(() => {
-    linkObsidianApiState(() => fileSystemRef.current, setFileSystem);
+    initializeFileSystem({
+      'Welcome.md': { content: '# Welcome\n\nThis is a sample file.' },
+      'Another-File.md': { content: '# Another File\n\nSome content here.' },
+      'folder/Note-In-Folder.md': { content: '# Another File\n\nSome content here.' },
+    });
 
     const initPlugin = async () => {
       
@@ -125,7 +139,7 @@ const App: React.FC = () => {
       // our mock app aware of the custom view type.
       app.registerView(
         'smtcmp-apply-view',
-        (leaf: WorkspaceLeaf) => new ApplyView(leaf)
+        (leaf: WorkspaceLeaf) => new ApplyView(leaf as any),
       );
 
       // Re-enable tools to allow for file editing
@@ -246,7 +260,7 @@ const App: React.FC = () => {
                             className={`tab-item ${activeLeaf === leaf ? 'is-active' : ''}`}
                             onClick={() => app.workspace.setActiveLeaf(leaf)}
                           >
-                            <span>{leaf.view.file.name}</span>
+                            <span>{leaf.view.getDisplayText()}</span>
                             <button className="close-tab-button" onClick={(e) => {
                               e.stopPropagation();
                               handleCloseTab(leaf);
@@ -254,18 +268,19 @@ const App: React.FC = () => {
                           </div>
                         ))}
                       </div>
-                      <MarkdownEditor
-                        activeFile={activeLeaf?.view.file?.path}
-                        fileContent={activeLeaf?.view.file ? fileSystem[activeLeaf.view.file.path]?.content : ''}
-                        onContentChange={(newContent) => {
-                          if (activeLeaf?.view.file) {
-                            // Instead of directly setting the file system,
-                            // we go through the mock vault API. This allows
-                            // our new event listener to pick up the change.
-                            app.vault.modify(activeLeaf.view.file, newContent);
-                          }
-                        }}
-                      />
+                      {activeLeaf?.getViewState().type === 'markdown' ? (
+                        <MarkdownEditor
+                          activeFile={activeLeaf?.view.file?.path}
+                          fileContent={activeLeaf?.view.file ? fileSystem[activeLeaf.view.file.path]?.content : ''}
+                          onContentChange={(newContent) => {
+                            if (activeLeaf?.view.file) {
+                              app.vault.modify(activeLeaf.view.file, newContent);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <ActiveLeafRenderer activeLeaf={activeLeaf} />
+                      )}
                     </div>
                     <div className={`right-sidebar ${isRightSidebarVisible ? 'is-visible' : ''}`} ref={rightSidebarRef}>
                       {/* The ChatView will be activated here by the plugin */}

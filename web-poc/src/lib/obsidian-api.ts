@@ -367,24 +367,11 @@ type FileSystemNode = {
     children: Map<string, FileSystemNode>;
 };
 
-let setVirtualFileSystem: React.Dispatch<React.SetStateAction<FileSystemState>> = () => {};
+let virtualFileSystem: FileSystemState = {};
 
-// This function will be called from App.tsx to link the React state
-export function linkObsidianApiState(
-  getState: () => FileSystemState,
-  setState: React.Dispatch<React.SetStateAction<FileSystemState>>
-) {
-  // Prevent redefining the property in case of HMR or React StrictMode re-invoking the effect
-  if (!Object.getOwnPropertyDescriptor(globalThis, 'virtualFileSystem')) {
-    Object.defineProperty(globalThis, 'virtualFileSystem', {
-      get: getState,
-      configurable: true, // Important for HMR and potential re-linking
-    });
-  }
-
-  setVirtualFileSystem = setState;
+export function initializeFileSystem(initialState: FileSystemState) {
+    virtualFileSystem = initialState;
 }
-
 
 /**
  * Traverses the file system representation to build lists of TFile and TFolder objects.
@@ -420,7 +407,7 @@ class Vault extends EventEmitter {
     }
 
     private getHierarchy(): TFolder {
-        const fs = (globalThis as any).virtualFileSystem as FileSystemState;
+        const fs = virtualFileSystem;
         const root = new TFolder('/', null);
         const folders = new Map<string, TFolder>([['', root]]);
 
@@ -458,7 +445,7 @@ class Vault extends EventEmitter {
     }
 
     async read(file: TFile): Promise<string> {
-        const fs = (globalThis as any).virtualFileSystem as FileSystemState;
+        const fs = virtualFileSystem;
         console.log(`[Mock API] vault.read: ${file.path}`);
         return fs[file.path]?.content ?? '';
     }
@@ -469,28 +456,26 @@ class Vault extends EventEmitter {
     
     async write(file: TFile, content: string): Promise<void> {
         console.log(`[Mock API] vault.write: ${file.path}`);
-        setVirtualFileSystem(prevFs => ({
-            ...prevFs,
-            [file.path]: { ...prevFs[file.path], content },
-        }));
+        if (virtualFileSystem[file.path]) {
+            virtualFileSystem[file.path].content = content;
+        } else {
+            virtualFileSystem[file.path] = { content, mtime: Date.now() };
+        }
     }
 
     async modify(file: TFile, content: string): Promise<void> {
         console.log(`[Mock API] vault.modify: ${file.path}`);
-        setVirtualFileSystem(prevFs => ({
-            ...prevFs,
-            [file.path]: { ...prevFs[file.path], content },
-        }));
-        this.emit('modify', this.getHierarchy().children.find(c => c.path === file.path));
+        if (virtualFileSystem[file.path]) {
+            virtualFileSystem[file.path].content = content;
+        } else {
+            virtualFileSystem[file.path] = { content, mtime: Date.now() };
+        }
+        this.emit('modify', this.getFileByPath(file.path));
     }
 
     async delete(file: TAbstractFile): Promise<void> {
         console.log(`[Mock API] vault.delete: ${file.path}`);
-        setVirtualFileSystem(prevFs => {
-            const newFs = { ...prevFs };
-            delete newFs[file.path];
-            return newFs;
-        });
+        delete virtualFileSystem[file.path];
         this.emit('delete', file);
     }
 
@@ -530,10 +515,7 @@ class Vault extends EventEmitter {
 
     async create(path: string, content: string): Promise<TFile> {
         console.log(`[Mock API] vault.create: ${path}`);
-        setVirtualFileSystem(prevFs => ({
-            ...prevFs,
-            [path]: { content, mtime: Date.now() } as any,
-        }));
+        virtualFileSystem[path] = { content, mtime: Date.now() };
         const newFile = new TFile(path, null, Date.now()); // Parent is null for now, getHierarchy will fix
         this.emit('create', newFile);
         return newFile;
@@ -572,12 +554,25 @@ export abstract class ItemView extends View { // Extends the now-defined View
 
     abstract getViewType(): string;
     
+    getDisplayText(): string {
+        // Every view should have a display text. Fallback to view type.
+        return this.getViewType();
+    }
+
     async onOpen() {
         // Called when the view is opened.
     }
 
     async onClose() {
         // Called when the view is closed.
+    }
+
+    getState() {
+        return {};
+    }
+
+    async setState(state: any, options: any) {
+        // Base implementation does nothing.
     }
 }
 
@@ -609,6 +604,10 @@ export class MarkdownView extends ItemView {
     getViewType(): string {
         return 'markdown';
     }
+
+    getDisplayText(): string {
+        return this.file?.name ?? 'Markdown';
+    }
 }
 
 export class WorkspaceLeaf {
@@ -624,15 +623,24 @@ export class WorkspaceLeaf {
         console.log(`[Mock API] WorkspaceLeaf created with id: ${this.id}`);
     }
 
-    async setViewState(state: { type: string, active?: boolean }) {
+    detach() {
+        this.app.workspace.detachLeaf(this);
+    }
+
+    async setViewState(state: { type: string; active?: boolean; state?: any }) {
         console.log(`[Mock API] setViewState called on leaf ${this.id} with state:`, state);
         const viewFactory = this.app.getViewRegistry().get(state.type);
         if (viewFactory) {
             console.log(`[Mock API] Found view factory for type: ${state.type}`);
-            // The registry stores a factory function, not a raw constructor. We call it.
             this.view = viewFactory(this);
 
-            // In Obsidian, onOpen is called after the view is attached. This triggers rendering.
+            // If state is provided, call the view's setState method.
+            // This is crucial for views like ApplyView that depend on initial data.
+            if (state.state && this.view.setState) {
+                await this.view.setState(state.state, {});
+                console.log(`[Mock API] Called setState() for view type: ${state.type}`);
+            }
+
             if (this.view.onOpen) {
                 await this.view.onOpen();
                 console.log(`[Mock API] Called onOpen() for view type: ${state.type}`);
@@ -647,7 +655,11 @@ export class WorkspaceLeaf {
     }
     
     getViewState() {
-        return { type: this.view?.getViewType(), active: true };
+        return { 
+            type: this.view?.getViewType(), 
+            active: true,
+            state: this.view?.getState ? this.view.getState() : {},
+        };
     }
 }
 
