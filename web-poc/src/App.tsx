@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FileTreeView } from './components/FileTreeView';
 import { MarkdownEditor } from './components/MarkdownEditor';
 import { SettingsModal } from './components/SettingsModal';
-import { app } from './lib/obsidian-api';
+import { app, linkObsidianApiState, Command, Editor } from './lib/obsidian-api';
 import SmartComposerPlugin from 'src/main';
 import { WorkspaceLeaf } from './lib/obsidian-api';
 
@@ -18,10 +18,22 @@ import { RAGProvider } from 'src/contexts/rag-context';
 import { SettingsProvider } from 'src/contexts/settings-context';
 import { DialogContainerProvider } from 'src/contexts/dialog-container-context';
 
+export interface VirtualFile {
+  content: string;
+}
+export type FileSystemState = Record<string, VirtualFile>; // filename -> file object
+
 const App: React.FC = () => {
   const [plugin, setPlugin] = useState<SmartComposerPlugin | null>(null);
   const pluginRef = useRef<SmartComposerPlugin | null>(null);
-  const [activeFile, setActiveFile] = useState<string | null>(null);
+  const [activeFile, setActiveFile] = useState<string | null>('Welcome.md');
+  const [fileSystem, setFileSystem] = useState<FileSystemState>({
+    'Welcome.md': { content: '# Welcome\n\nThis is a sample file.' },
+    'Another-File.md': { content: '# Another File\n\nSome content here.' },
+  });
+  const fileSystemRef = useRef(fileSystem);
+  fileSystemRef.current = fileSystem;
+
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [isRightSidebarVisible, setRightSidebarVisible] = useState(false);
   const [rightSidebarContent, setRightSidebarContent] = useState<HTMLElement | null>(null);
@@ -29,6 +41,8 @@ const App: React.FC = () => {
   const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
 
   useEffect(() => {
+    linkObsidianApiState(() => fileSystemRef.current, setFileSystem);
+
     const initPlugin = async () => {
       const handleFileOpen = (file: { path: string } | null) => {
         if (file) {
@@ -49,7 +63,7 @@ const App: React.FC = () => {
       app.workspace.on('active-leaf-change', handleLayoutChange);
 
       const files = app.vault.getFiles();
-      if (files.length > 0) {
+      if (files.length > 0 && !activeFile) {
         app.workspace.openLinkText(files[0].path, '');
       }
 
@@ -65,6 +79,9 @@ const App: React.FC = () => {
       const newPlugin = new SmartComposerPlugin(app as any, pluginManifest as any);
       await newPlugin.onload();
       
+      // Re-enable tools to allow for file editing
+      newPlugin.settings.chatOptions.enableTools = true;
+
       pluginRef.current = newPlugin;
       setPlugin(newPlugin);
     };
@@ -90,13 +107,30 @@ const App: React.FC = () => {
     app.workspace.openLinkText(path, '');
   };
 
-  const executeCommand = (command: any) => {
+  const executeCommand = (command: Command) => {
     if (command.callback) {
       command.callback();
     } else if (command.editorCallback) {
       const view = app.workspace.getActiveViewOfType('MarkdownView');
       if (view) {
-        command.editorCallback(view.editor, view);
+        // We need to provide the editor with the *current* content
+        // This is a bit of a hack, as the original editor instance
+        // won't have the updated content if it was changed by another process (like the AI)
+        const activeFileContent = activeFile ? fileSystem[activeFile]?.content : '';
+        const mockEditor: Editor = {
+          getValue: () => activeFileContent,
+          setValue: (content: string) => {
+            if (activeFile) {
+              setFileSystem(prevFs => ({
+                ...prevFs,
+                [activeFile]: { ...prevFs[activeFile], content },
+              }));
+            }
+          },
+          getSelection: () => view.editor.getSelection(),
+          replaceSelection: (text: string) => view.editor.replaceSelection(text),
+        };
+        command.editorCallback(mockEditor, view);
       } else {
         console.warn("Cannot execute editor command: No active MarkdownView found.");
       }
@@ -131,7 +165,7 @@ const App: React.FC = () => {
                   {showCommandPalette && (
                     <div className="command-palette">
                       <ul>
-                        {app.getCommands().map((cmd) => (
+                        {app.getCommands().map((cmd: Command) => (
                           <li key={cmd.id} onClick={() => executeCommand(cmd)}>
                             {cmd.name}
                           </li>
@@ -145,11 +179,25 @@ const App: React.FC = () => {
                     onClose={() => setSettingsModalOpen(false)}
                   />
                   <div className="sidebar">
-                    <FileTreeView onFileSelect={handleFileSelect} />
+                    <FileTreeView
+                      files={Object.keys(fileSystem)}
+                      onFileSelect={handleFileSelect}
+                    />
                   </div>
                   <div className="main-content">
                     <div className="editor-container">
-                      <MarkdownEditor activeFile={activeFile} />
+                      <MarkdownEditor
+                        activeFile={activeFile}
+                        fileContent={activeFile ? fileSystem[activeFile]?.content : ''}
+                        onContentChange={(newContent) => {
+                          if (activeFile) {
+                            setFileSystem(prevFs => ({
+                              ...prevFs,
+                              [activeFile]: { ...prevFs[activeFile], content: newContent },
+                            }));
+                          }
+                        }}
+                      />
                     </div>
                     <div className={`right-sidebar ${isRightSidebarVisible ? 'is-visible' : ''}`} ref={rightSidebarRef}>
                       {/* The ChatView will be activated here by the plugin */}

@@ -495,6 +495,7 @@ input[type='text'].smtcmp-chat-list-dropdown-item-title-input {
       color: var(--text-normal);
       font-weight: var(--font-medium);
       gap: 2px;
+      background-color: blueviolet;
     }
   }
 

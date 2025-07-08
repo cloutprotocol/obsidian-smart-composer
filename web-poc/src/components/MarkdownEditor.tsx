@@ -10,10 +10,11 @@ import { EditorView } from "@codemirror/view";
 
 interface MarkdownEditorProps {
   activeFile: string | null;
+  fileContent: string;
+  onContentChange: (newContent: string) => void;
 }
 
-export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile }) => {
-  const [content, setContent] = useState('');
+export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile, fileContent, onContentChange }) => {
   const [wordWrap, setWordWrap] = useState(false);
 
   // This memoized value provides the necessary CodeMirror extension to enable/disable line wrapping.
@@ -24,34 +25,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile }) =>
     }
     return [];
   }, [wordWrap]);
-
-  useEffect(() => {
-    // This effect now safely handles file loading.
-    // It will only attempt to read a file if `activeFile` is a valid path string.
-    if (activeFile) {
-      const file = app.vault.getFileByPath(activeFile);
-      // It further ensures that the file object exists before trying to read.
-      if (file) {
-        app.vault.read(file).then(setContent);
-      } else {
-        // If the file can't be found (e.g., it was deleted), clear the content.
-        setContent('');
-      }
-    } else {
-      setContent('');
-    }
-  }, [activeFile]);
-
-  const handleContentChange = (value: string) => {
-    setContent(value);
-    if (activeFile) {
-      // Like reading, writing is also protected by getting the TFile object first.
-      const file = app.vault.getFileByPath(activeFile);
-      if (file) {
-        app.vault.write(file, value);
-      }
-    }
-  };
 
   if (!activeFile) {
     return <div className="editor-container">Select a file to start editing.</div>;
@@ -71,8 +44,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile }) =>
         </div>
       </div>
       <Markdown
-        value={content}
-        onChange={handleContentChange}
+        value={fileContent}
+        onChange={onContentChange}
         height="calc(100vh - 120px)"
         extensions={extensions}
         style={{

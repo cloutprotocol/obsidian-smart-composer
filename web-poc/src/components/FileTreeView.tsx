@@ -7,31 +7,16 @@ import React, { useState, useEffect } from 'react';
 import { app } from '../lib/obsidian-api';
 
 interface FileTreeViewProps {
+  files: string[];
   onFileSelect: (path: string) => void;
 }
 
-export const FileTreeView: React.FC<FileTreeViewProps> = ({ onFileSelect }) => {
-  const [files, setFiles] = useState(app.vault.getFiles());
-
-  useEffect(() => {
-    const updateFiles = () => setFiles(app.vault.getFiles());
-    
-    app.vault.on('create', updateFiles);
-    app.vault.on('delete', updateFiles);
-    app.vault.on('rename', updateFiles);
-
-    return () => {
-      app.vault.off('create', updateFiles);
-      app.vault.off('delete', updateFiles);
-      app.vault.off('rename', updateFiles);
-    };
-  }, []);
-
+export const FileTreeView: React.FC<FileTreeViewProps> = ({ files, onFileSelect }) => {
   const handleAddFile = () => {
     const fileName = prompt('Enter file name (e.g., new-note.md):');
     if (fileName) {
       // Check if a file with this name already exists
-      const fileExists = files.some(f => f.name === fileName);
+      const fileExists = files.some(f => f === fileName);
       if (fileExists) {
         alert(`A file named "${fileName}" already exists.`);
         return;
@@ -93,9 +78,9 @@ export const FileTreeView: React.FC<FileTreeViewProps> = ({ onFileSelect }) => {
         <button onClick={runApiTests}>Run API Tests</button>
       </div>
       <div>
-        {files.map((file) => (
-          <div key={file.path} className="file-tree-node" onClick={() => onFileSelect(file.path)}>
-            {file.name}
+        {files.map((filePath) => (
+          <div key={filePath} className="file-tree-node" onClick={() => onFileSelect(filePath)}>
+            {filePath.split('/').pop()}
           </div>
         ))}
       </div>

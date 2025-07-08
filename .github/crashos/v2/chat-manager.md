@@ -1,14 +1,14 @@
-# PRD: Porting Chat Stream Management to Web POC
+# PRD: Porting Core Chat and File Editing to Web POC
 
 ## 1. Objective
 
-This document outlines the requirements for porting the `useChatStreamManager` hook and its associated dependencies to the web-based editor proof-of-concept (POC). The primary goal is to enable live, streaming chat functionality, which is the core interactive feature of the **Smart Composer** plugin. Successfully implementing this component will validate our ability to support complex, asynchronous, and stateful plugin logic that goes beyond simple API mocking and interacts with external services from the browser.
+This document outlines the requirements for porting the `useChatStreamManager` hook and its associated dependencies to the web-based editor proof-of-concept (POC). The primary goal is to enable core interactive features of the **Smart Composer** plugin: live, streaming chat, and AI-assisted file editing. Successfully implementing these components will validate our ability to support complex, asynchronous, and stateful plugin logic that goes beyond simple API mocking and interacts with a virtual file system from the browser.
 
 ### Referenced Components:
 
-*   **Core Logic:** `src/components/chat-view/useChatStreamManager.ts`
+*   **Core Logic:** `src/components/chat-view/useChatStreamManager.ts`, `src/utils/chat/apply.ts`
 *   **Primary Consumer:** `src/components/chat-view/Chat.tsx`
-*   **Key Dependencies:** `ResponseGenerator`, `PromptGenerator`, LLM providers, `mcp-context`, `rag-context`.
+*   **Key Dependencies:** `ResponseGenerator`, `PromptGenerator`, LLM providers, `mcp-context`, `rag-context`, `app.vault.modify`.
 
 ## 2. Analysis of Integration Strategies
 
@@ -26,34 +26,55 @@ The core objective of this project, as outlined in the [initial implementation p
 
 This process will serve as an invaluable dogfooding exercise. We will start by disabling the most complex dependencies (RAG and Tools/MCP) and focus on the fundamental LLM call. This incremental approach will allow us to build out the necessary infrastructure for the web POC, such as providing React contexts and handling API calls, creating a robust foundation for subsequent features.
 
-## 4. Next Steps
+## 4. Completed Milestones
 
 ### Phase 1: Environment and Context Setup
 
-1.  **Resolve Module Pathing:**
-    *   The TypeScript/bundler configuration for the web POC needs to correctly resolve module paths from the shared `src` directory. The error `Cannot find module './useChatStreamManager'` in `Chat.tsx` indicates a path resolution issue that must be fixed in the `web-poc`'s build tooling (`vite.config.ts`, `tsconfig.json`).
-2.  **Provide React Contexts:**
-    *   In the `web-poc/src/App.tsx`, wrap the main component tree with the necessary context providers that `useChatStreamManager` and its children depend on: `SettingsProvider`, `AppProvider`, `RAGProvider`, and `MCPProvider`.
-    *   Initially, the `RAGProvider` and `MCPProvider` can provide `null` or mock implementations that return no data or do nothing. The plugin's logic is already designed to be resilient to their absence.
+- [x] **Resolve Module Pathing:** The bundler configuration for the web POC now correctly resolves module paths from the shared `src` directory.
+- [x] **Provide React Contexts:** `App.tsx` wraps the component tree with necessary providers (`SettingsProvider`, `AppProvider`, etc.), with `RAGProvider` and `MCPProvider` initially providing null implementations.
+- [x] **Implement Dialog Container**: A dialog container has been added to `App.tsx` to handle modal rendering, and `Modal.ts` in the plugin has been adapted to use it.
 
 ### Phase 2: Adapting Core Dependencies
 
-3.  **LLM Provider Integration:**
-    *   The various LLM providers in `src/core/llm/` use `fetch`, which is browser-compatible. The immediate challenge will be CORS.
-    *   **Action:** For the POC, we will test direct API calls. If blocked by CORS, we will implement a simple proxy within the `web-poc/src/worker.ts` to forward the requests, isolating the web-specific logic from the core plugin code.
-4.  **Disable Advanced Features via Settings:**
-    *   Use the mocked `loadData`/`saveData` system to configure the plugin's settings within the POC.
-    *   Specifically, set `settings.chatOptions.enableTools` to `false` and ensure any features that trigger vault searching (RAG) are disabled by default in the UI. This narrows our focus to the core chat streaming. `useChatStreamManager` and `ResponseGenerator` are already designed to bypass tool-use and RAG when disabled.
+- [x] **LLM Provider Integration:** LLM providers from `src/core/llm/` are now functional in the browser, with a CORS proxy implemented in `web-poc/src/worker.ts` to handle cross-origin requests.
+- [x] **Disable Advanced Features via Settings:** The mocked settings system is used to disable tool use (`enableTools: false`) and RAG features, narrowing the focus to the core chat stream.
 
 ### Phase 3: Integration and Testing
 
-5.  **End-to-End Stream Test:**
-    *   With the context and dependencies in place, perform a full user flow test:
-        1.  Type a message in the `ChatUserInput`.
-        2.  Submit the message.
-        3.  Verify a real network request is sent to the configured LLM provider (e.g., OpenAI).
-        4.  Verify the response streams back and is rendered correctly in the `Chat.tsx` component.
-        5.  Test the "Stop Generation" button to ensure the `AbortController` logic functions correctly.
-6.  **Error Handling Validation:**
-    *   Test known error conditions, such as providing an invalid API key.
-    *   Verify that the `LLMAPIKeyInvalidException` is caught and the `ErrorModal` is displayed correctly, confirming that our mocked `Modal` class and its usage are working as intended.
+- [x] **End-to-End Stream Test:** A full user flow test is successful: typing a message, submitting it, seeing a real network request to an LLM, and having the response stream rendered correctly. The "Stop Generation" feature is also functional.
+- [x] **Error Handling Validation:** Error conditions like invalid API keys are caught, and the mocked `ErrorModal` is displayed correctly.
+
+## 5. Next Steps: File System Integration
+
+The next major milestone is to enable the AI to edit files within the POC's virtual file system. The plugin's `ResponseGenerator` already parses `<smtcmp_block>` tags and calls `applyDiff` to patch file content. We need to implement the vault-level APIs to make these edits reflect in our POC's UI.
+
+### Phase 4: Mocking the Vault for File Edits
+
+1.  **Centralize File System State:**
+    *   **Action:** In `web-poc/src/App.tsx`, introduce a state management solution (e.g., `useState`, `useReducer`) to hold the entire virtual file system, including file names and their content. This will serve as the single source of truth.
+    *   **Example State Shape:**
+        ```typescript
+        interface VirtualFile {
+          content: string;
+        }
+        type FileSystemState = Record<string, VirtualFile>; // filename -> file object
+        ```
+    *   **Initial State:** Populate the state with a few sample files (e.g., `Welcome.md`) to provide initial content for editing.
+
+2.  **Implement `app.vault.modify`:**
+    *   **Location:** `web-poc/src/lib/obsidian-api.ts`.
+    *   **Action:** Implement the `modify(file, data)` method on the mock `vault` object. This function will receive the file path and new content from `applyDiff`. It must update the centralized `FileSystemState` in `App.tsx`.
+    *   **Implementation Note:** This requires passing a state setter function from `App.tsx` down to the `obsidian-api` module or using a shared state management solution like Zustand or a React Context to avoid prop drilling.
+
+3.  **Connect UI to File System State:**
+    *   **`FileTreeView.tsx`**: This component should now render its list of files based on the keys of the `FileSystemState`. It should also manage which file is "active".
+    *   **`MarkdownEditor.tsx`**: This component must display the `content` of the currently active file from the `FileSystemState`. Its `onChange` handler must update the state to allow for manual user edits, ensuring a two-way data binding.
+
+4.  **End-to-End Test Plan:**
+    1.  Start the web POC application and select a file (e.g., `Welcome.md`) from the `FileTreeView`.
+    2.  Verify its content is displayed in the `MarkdownEditor`.
+    3.  In the chat input, instruct the AI to change the content of the selected file (e.g., "change the heading to 'Hello Universe'").
+    4.  Submit the message and observe the LLM stream.
+    5.  Verify the `ResponseGenerator` correctly identifies the `<smtcmp_block>` and calls `applyDiff`.
+    6.  Confirm that the mocked `app.vault.modify` is triggered, updating the `FileSystemState`.
+    7.  Finally, validate that the `MarkdownEditor` automatically refreshes to display the new file content.
