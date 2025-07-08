@@ -64,6 +64,11 @@ export function getIcon(iconId: string): SVGSVGElement {
 }
 
 export function normalizePath(path: string): string {
+    // Add a guard clause to prevent crashes on undefined input.
+    // This can happen during component lifecycle races.
+    if (!path) {
+        return '';
+    }
     return path.replace(/\\\\/g, '/');
 }
 
@@ -159,58 +164,190 @@ export abstract class PluginSettingTab {
     abstract display(): void;
 }
 
+// --- Hierarchical File System Abstractions ---
+
 export class TAbstractFile {
-    path: string = '';
-    name: string = '';
+    path: string;
+    name: string;
+    parent: TFolder | null;
+
+    constructor(path: string, parent: TFolder | null = null) {
+        this.path = normalizePath(path);
+        this.name = path.split('/').pop() ?? path;
+        this.parent = parent;
+    }
 }
-export class TFile extends TAbstractFile {}
-export class TFolder extends TAbstractFile {}
+
+export class TFile extends TAbstractFile {
+    stat: {
+        mtime: number; // Last modified time
+    };
+
+    constructor(path: string, parent: TFolder | null, mtime: number) {
+        super(path, parent);
+        this.stat = { mtime };
+    }
+}
+
+export class TFolder extends TAbstractFile {
+    children: (TFile | TFolder)[] = [];
+
+    isRoot(): boolean {
+        return this.path === '/';
+    }
+}
+
+type FileSystemNode = {
+    type: 'file';
+    content: string;
+    mtime: number;
+} | {
+    type: 'folder';
+    children: Map<string, FileSystemNode>;
+};
 
 // Forward-declare App to satisfy circular dependencies
 let app: App;
 
-// In-memory file system for the POC
-const fileSystem = new Map<string, string>();
-fileSystem.set('Welcome.md', '# Welcome to your new vault!\n\nThis is a sample note.');
+// In-memory file system for the POC, now hierarchical
+const fileSystem: FileSystemNode = {
+    type: 'folder',
+    children: new Map([
+        ['Welcome.md', { type: 'file', content: '# Welcome to your new vault!', mtime: Date.now() }]
+    ])
+};
+
+function findNode(path: string): { parent: FileSystemNode | null, node: FileSystemNode | null, name: string } {
+    const parts = normalizePath(path).split('/').filter(p => p);
+    let currentNode: FileSystemNode = fileSystem;
+    let parentNode: FileSystemNode | null = null;
+
+    for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        if (currentNode.type === 'folder' && currentNode.children.has(part)) {
+            parentNode = currentNode;
+            currentNode = currentNode.children.get(part)!;
+        } else {
+            // If we are at the last part, the node doesn't exist yet, which is fine for creation
+            if (i === parts.length - 1) {
+                 return { parent: currentNode, node: null, name: part };
+            }
+            return { parent: null, node: null, name: '' };
+        }
+    }
+
+    return { parent: parentNode, node: currentNode, name: parts.pop() ?? '' };
+}
+
+function traverse(
+    node: FileSystemNode,
+    path: string,
+    parentFolder: TFolder | null,
+    files: TFile[],
+    folders: TFolder[]
+) {
+    if (node.type === 'folder') {
+        const currentFolder = new TFolder(path, parentFolder);
+        if(parentFolder) parentFolder.children.push(currentFolder);
+        folders.push(currentFolder);
+
+        for (const [name, childNode] of node.children.entries()) {
+            const childPath = path === '/' ? name : `${path}/${name}`;
+            traverse(childNode, childPath, currentFolder, files, folders);
+        }
+    } else {
+        const file = new TFile(path, parentFolder, node.mtime);
+        if(parentFolder) parentFolder.children.push(file);
+        files.push(file);
+    }
+}
+
 
 class Vault extends EventEmitter {
-    private fileSystem: Map<string, string>;
-
-    constructor(fileSystem: Map<string, string>) {
+    constructor() {
         super();
-        this.fileSystem = fileSystem;
     }
 
-    async read(path: string): Promise<string> {
-        if (this.fileSystem.has(path)) {
-            return this.fileSystem.get(path)!;
+    async read(file: TFile): Promise<string> {
+        const { node } = findNode(file.path);
+        if (node && node.type === 'file') {
+            return node.content;
         }
-        throw new Error(`File not found: ${path}`);
+        throw new Error(`File not found: ${file.path}`);
     }
 
-    async write(path: string, content: string): Promise<void> {
-        this.fileSystem.set(path, content);
-        this.emit('modify', path);
+    /**
+     * In the real Obsidian API, `cachedRead` is a synchronous-first method
+     * that's faster if the file is already in memory. For our mock API,
+     * where all files are in memory, it can be an alias for `read`.
+     */
+    async cachedRead(file: TFile): Promise<string> {
+        console.log(`[Mock API] vault.cachedRead called for: ${file.path}`);
+        return this.read(file);
     }
 
-    async delete(path: string): Promise<void> {
-        if (this.fileSystem.has(path)) {
-            this.fileSystem.delete(path);
-            this.emit('delete', path);
+    async write(file: TFile, content: string): Promise<void> {
+        const { parent, name } = findNode(file.path);
+        if (parent && parent.type === 'folder') {
+            const mtime = Date.now();
+            parent.children.set(name, { type: 'file', content, mtime });
+            file.stat.mtime = mtime; // Update mtime on the TFile object as well
+            this.emit('modify', file);
+            return;
         }
+        throw new Error(`Cannot write to path: ${file.path}`);
     }
     
-    // In a real implementation this would return TFile and TFolder objects
-    getFiles() {
-        return Array.from(this.fileSystem.keys()).map(path => ({ path, name: path }));
-    }
-    
-    async create(path: string, content: string): Promise<void> {
-        if (this.fileSystem.has(path)) {
-            throw new Error(`File already exists: ${path}`);
+    async delete(file: TAbstractFile): Promise<void> {
+       const { parent, node, name } = findNode(file.path);
+        if (parent && parent.type === 'folder' && node) {
+            parent.children.delete(name);
+            this.emit('delete', file);
+            return;
         }
-        this.fileSystem.set(path, content);
-        this.emit('create', path);
+        throw new Error(`File or folder not found: ${file.path}`);
+    }
+
+    getFiles(): TFile[] {
+        const files: TFile[] = [];
+        const folders: TFolder[] = [];
+        traverse(fileSystem, '/', null, files, folders);
+        return files;
+    }
+
+    getAllFolders(): TFolder[] {
+        const files: TFile[] = [];
+        const folders: TFolder[] = [];
+        const root = new TFolder('/');
+        traverse(fileSystem, '/', root, files, folders);
+        // Exclude the artifical root folder from the final result
+        return folders.filter(f => f.path !== '/');
+    }
+
+    async create(path: string, content: string): Promise<TFile> {
+        const { parent, node, name } = findNode(path);
+
+        if (node) {
+            throw new Error(`File or folder already exists: ${path}`);
+        }
+
+        if (parent && parent.type === 'folder') {
+            const mtime = Date.now();
+            parent.children.set(name, { type: 'file', content, mtime });
+            
+            // We need to rebuild the TFile parent object
+            const tFiles = this.getFiles();
+            const newTFile = tFiles.find(f => f.path === path);
+
+            if (!newTFile) {
+                // This should not happen if getFiles is correct
+                throw new Error("Could not find created file, something is wrong.");
+            }
+            this.emit('create', newTFile);
+            return newTFile;
+        }
+
+        throw new Error(`Invalid path: ${path}`);
     }
 }
 
@@ -255,16 +392,16 @@ export abstract class ItemView extends View { // Extends the now-defined View
     }
 }
 
-
 export class Editor {
     getSelection(): string {
-        // For POC, return a hardcoded value.
-        // In a real implementation, this would get the selected text from the editor component.
-        return "This is the selected text from the editor.";
+        console.log("[Mock API] getSelection called");
+        // In a real app, this would get the selected text from the editor component.
+        // For the POC, we can return a hardcoded value for testing.
+        return "This is selected text from the editor.";
     }
-
+    
     replaceSelection(text: string) {
-        console.log(`Replacing selection with: ${text}`);
+        console.log(`[Mock API] replaceSelection called with: "${text}"`);
     }
 }
 
@@ -275,7 +412,6 @@ export class MarkdownView extends ItemView {
         super(leaf);
         this.editor = new Editor();
     }
-
     getViewType(): string {
         return 'markdown';
     }
@@ -317,15 +453,12 @@ export class WorkspaceLeaf {
     }
     
     getViewState() {
-        if (this.view) {
-            return { type: this.view.getViewType() };
-        }
-        return { type: null };
+        return { type: this.view?.getViewType(), active: true };
     }
 }
 
 class Workspace extends EventEmitter {
-    activeFile: { path: string } | null = null;
+    activeFile: TFile | null = null;
     private leaves: WorkspaceLeaf[] = [];
     private app: App;
 
@@ -344,23 +477,25 @@ class Workspace extends EventEmitter {
     }
 
     async openLinkText(linktext: string, sourcePath: string, newLeaf?: boolean): Promise<void> {
-        console.log(`[Mock API] Opening link: ${linktext}`);
-        this.activeFile = { path: linktext };
-        
-        const leaf = this.getEditorLeaf();
-        const view = new MarkdownView(leaf);
-        leaf.open(view);
+        console.log(`[Mock API] openLinkText called for: ${linktext}`);
+        const targetFile = this.app.vault.getFiles().find(f => f.path === linktext);
 
-        this.emit('file-open', this.activeFile);
+        if (targetFile) {
+            this.activeFile = targetFile;
+            this.emit('file-open', targetFile);
+        } else {
+            console.warn(`[Mock API] File not found for link: ${linktext}`);
+        }
     }
-    
+
     getActiveFile() {
+        console.log("[Mock API] getActiveFile called");
         return this.activeFile;
     }
 
     getLeavesOfType(viewType: string) {
         console.log(`[Mock API] getLeavesOfType called for: ${viewType}`);
-        return this.leaves.filter(leaf => leaf.getViewState().type === viewType);
+        return this.leaves.filter(leaf => leaf.view?.getViewType() === viewType);
     }
 
     getRightLeaf(create: boolean): WorkspaceLeaf | null {
@@ -504,7 +639,7 @@ export class App {
     public lastEvent: any = null;
 
     constructor() {
-        this.vault = new Vault(fileSystem);
+        this.vault = new Vault();
         this.workspace = new Workspace(this);
     }
 
