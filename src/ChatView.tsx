@@ -93,11 +93,7 @@ export class ChatView extends ItemView {
                     >
                       <QueryClientProvider client={queryClient}>
                         <React.StrictMode>
-                          <DialogContainerProvider
-                            container={
-                              this.containerEl as HTMLElement
-                            }
-                          >
+                          <DialogContainerProvider>
                             <Chat
                               ref={this.chatRef}
                               {...this.initialChatProps}

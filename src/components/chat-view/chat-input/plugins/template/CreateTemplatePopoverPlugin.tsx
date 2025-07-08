@@ -9,7 +9,7 @@ import {
 } from 'lexical'
 import { CSSProperties, useCallback, useEffect, useRef, useState } from 'react'
 
-import CreateTemplateDialogContent from '../../../CreateTemplateDialog'
+// import CreateTemplateDialogContent from '../../../CreateTemplateDialog'
 
 export default function CreateTemplatePopoverPlugin({
   anchorElement,
@@ -114,33 +114,43 @@ export default function CreateTemplatePopoverPlugin({
   }, [contentEditableElement, updatePopoverPosition])
 
   return (
-    <Dialog.Root
-      modal={false}
-      open={isDialogOpen}
-      onOpenChange={(open) => {
-        if (open) {
-          setSelectedSerializedNodes(getSelectedSerializedNodes())
-        }
-        setIsDialogOpen(open)
-        setIsPopoverOpen(false)
-      }}
-    >
-      <Dialog.Trigger asChild>
-        <button
-          ref={popoverRef}
-          style={{
-            position: 'absolute',
-            visibility: isPopoverOpen ? 'visible' : 'hidden',
-            ...popoverStyle,
+    <>
+      <Dialog.Root
+        modal={false}
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setSelectedSerializedNodes(getSelectedSerializedNodes())
+          }
+          setIsDialogOpen(open)
+          setIsPopoverOpen(false)
+        }}
+      >
+        <Dialog.Trigger asChild>
+          <button
+            ref={popoverRef}
+            style={{
+              position: 'absolute',
+              visibility: isPopoverOpen ? 'visible' : 'hidden',
+              ...popoverStyle,
+            }}
+          >
+            Create template
+          </button>
+        </Dialog.Trigger>
+      </Dialog.Root>
+
+      {/*
+      <Dialog.Root open={isCreateTemplateDialogOpen}>
+        <CreateTemplateDialogContent
+          selectedSerializedNodes={selectedSerializedNodes}
+          onClose={() => {
+            setIsCreateTemplateDialogOpen(false)
+            setSelectedSerializedNodes(null)
           }}
-        >
-          Create template
-        </button>
-      </Dialog.Trigger>
-      <CreateTemplateDialogContent
-        selectedSerializedNodes={selectedSerializedNodes}
-        onClose={() => setIsDialogOpen(false)}
-      />
-    </Dialog.Root>
+        />
+      </Dialog.Root>
+      */}
+    </>
   )
 }

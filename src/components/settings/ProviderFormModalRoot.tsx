@@ -14,10 +14,12 @@ export default function ProviderFormModalRoot({
   plugin,
   provider,
   onClose,
+  title, // title is now a prop
 }: {
   plugin: SmartComposerPlugin
   provider: LLMProvider | null // null for new provider
   onClose: () => void
+  title?: string
 }) {
   const [formData, setFormData] = useState<LLMProvider>(
     provider

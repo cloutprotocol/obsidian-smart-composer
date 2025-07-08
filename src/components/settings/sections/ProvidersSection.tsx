@@ -3,13 +3,13 @@ import { App } from 'obsidian'
 import React from 'react'
 
 import { DEFAULT_PROVIDERS, PROVIDER_TYPES_INFO } from '../../../constants'
+import { useDialog } from '../../../contexts/dialog-container-context'
 import { useSettings } from '../../../contexts/settings-context'
 import { getEmbeddingModelClient } from '../../../core/rag/embedding'
 import SmartComposerPlugin from '../../../main'
-import { AddProviderModal } from '../../../settings/AddProviderModal'
 import { ConfirmModal } from '../../../settings/ConfirmModal'
-import { EditProviderModal } from '../../../settings/EditProviderModal'
 import { LLMProvider } from '../../../types/provider.types'
+import ProviderFormModalRoot from '../ProviderFormModalRoot'
 
 type ProvidersSectionProps = {
   app: App
@@ -18,6 +18,7 @@ type ProvidersSectionProps = {
 
 export function ProvidersSection({ app, plugin }: ProvidersSectionProps) {
   const { settings, setSettings } = useSettings()
+  const { openDialog } = useDialog()
 
   const handleDeleteProvider = async (provider: LLMProvider) => {
     // Get associated models
@@ -115,7 +116,11 @@ export function ProvidersSection({ app, plugin }: ProvidersSectionProps) {
                 <td
                   className="smtcmp-settings-table-api-key"
                   onClick={() => {
-                    new EditProviderModal(app, plugin, provider).open()
+                    openDialog(ProviderFormModalRoot, {
+                      plugin,
+                      provider,
+                      title: `Edit ${provider.id}`,
+                    })
                   }}
                 >
                   {provider.apiKey ? '••••••••' : 'Set API key'}
@@ -124,7 +129,11 @@ export function ProvidersSection({ app, plugin }: ProvidersSectionProps) {
                   <div className="smtcmp-settings-actions">
                     <button
                       onClick={() => {
-                        new EditProviderModal(app, plugin, provider).open()
+                        openDialog(ProviderFormModalRoot, {
+                          plugin,
+                          provider,
+                          title: `Edit ${provider.id}`,
+                        })
                       }}
                       className="clickable-icon"
                     >
@@ -148,7 +157,11 @@ export function ProvidersSection({ app, plugin }: ProvidersSectionProps) {
               <td colSpan={4}>
                 <button
                   onClick={() => {
-                    new AddProviderModal(app, plugin).open()
+                    openDialog(ProviderFormModalRoot, {
+                      plugin,
+                      provider: null,
+                      title: 'Add Custom Provider',
+                    })
                   }}
                 >
                   Add custom provider

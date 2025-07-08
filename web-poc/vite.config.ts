@@ -12,4 +12,10 @@ export default defineConfig({
       'obsidian': path.resolve(__dirname, './src/lib/obsidian-api.ts'),
     },
   },
+  server: {
+    fs: {
+      // Allow serving files from one level up to the project root
+      allow: ['..'],
+    },
+  },
 }) 
