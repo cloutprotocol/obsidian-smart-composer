@@ -520,6 +520,28 @@ class Vault extends EventEmitter {
         this.emit('create', newFile);
         return newFile;
     }
+
+    async createFolder(path: string): Promise<void> {
+        console.log(`[Mock API] vault.createFolder: ${path}`);
+        
+        const normalizedPath = path.endsWith('/') ? path.slice(0, -1) : path;
+        
+        // Check if a file or folder with this name already exists.
+        // We check if any existing file path IS the folder path, or is inside the folder path.
+        if (this.getFiles().some(f => f.path === normalizedPath || f.path.startsWith(normalizedPath + '/'))) {
+            const msg = `A file or folder at path "${normalizedPath}" already exists.`
+            console.error(`[Mock API] ${msg}`);
+            // In a real app, this might throw. For the POC, alerting is fine.
+            alert(msg); 
+            return;
+        }
+
+        // To represent an empty folder in our flat file system,
+        // we'll create a placeholder file. This file will be filtered out in the UI.
+        const placeholderPath = `${normalizedPath}/.placeholder`;
+        await this.create(placeholderPath, '');
+        // The 'create' event is already emitted by `this.create()`, which the UI listens to.
+    }
 }
 
 export class View { // Now defined BEFORE ItemView
