@@ -7,6 +7,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { app } from '../lib/obsidian-api';
 import Markdown from "@uiw/react-markdown-editor";
 import { EditorView } from "@codemirror/view";
+import { useTheme } from '../contexts/theme-context';
 
 interface MarkdownEditorProps {
   activeFile: string | null;
@@ -16,6 +17,7 @@ interface MarkdownEditorProps {
 
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile, fileContent, onContentChange }) => {
   const [content, setContent] = useState(fileContent);
+  const { theme } = useTheme();
 
   useEffect(() => {
     setContent(fileContent);
@@ -49,12 +51,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile, file
       <Markdown
         value={content}
         onChange={handleContentChange}
-        height="calc(100vh - 120px)"
+        height="calc(100vh - 40px)"
         extensions={extensions}
-        style={{
-          border: '1px solid #444',
-          borderRadius: '4px',
-        }}
+        theme={theme}
         />
     </div>
   );

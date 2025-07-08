@@ -5,8 +5,9 @@
  */
 import React, { useState, useEffect, useRef } from 'react';
 import { Tree, NodeApi } from 'react-arborist';
-import { FaFileMedical, FaFolderPlus } from 'react-icons/fa';
+import { FaFile, FaFolder, FaFolderOpen, FaPlus, FaFolderPlus } from 'react-icons/fa';
 import { app, TFile, TFolder } from '../lib/obsidian-api';
+import styles from './FileTreeView.module.css'; // Import the new CSS module
 
 interface FileTreeViewProps {
   onFileSelect: (path: string) => void;
@@ -20,7 +21,6 @@ interface ArboristNode {
 }
 
 const convertToArboristNode = (item: TFile | TFolder): ArboristNode | null => {
-  // Filter out placeholder files
   if (item.name === '.placeholder') {
     return null;
   }
@@ -29,7 +29,7 @@ const convertToArboristNode = (item: TFile | TFolder): ArboristNode | null => {
   const children = isFolder
     ? (item as TFolder).children
         .map(convertToArboristNode)
-        .filter((n): n is ArboristNode => n !== null) // Filter out nulls from .placeholder files
+        .filter((n): n is ArboristNode => n !== null)
         .sort((a, b) => {
           const aIsFolder = !!a.children;
           const bIsFolder = !!b.children;
@@ -49,17 +49,18 @@ const convertToArboristNode = (item: TFile | TFolder): ArboristNode | null => {
 
 // Custom Node renderer to handle clicks and styling
 const NodeRenderer = ({ node, style, dragHandle }: { node: NodeApi<ArboristNode>; style: React.CSSProperties; dragHandle?: (el: HTMLDivElement | null) => void; }) => {
+  const isFolder = node.isInternal;
+  const Icon = isFolder ? (node.isOpen ? FaFolderOpen : FaFolder) : FaFile;
+
   return (
     <div
       ref={dragHandle}
       style={style}
-      className={`file-tree-node ${node.isInternal ? 'is-folder' : 'is-file'} ${node.isSelected ? 'is-selected' : ''}`}
+      className={`${styles.nodeContainer} ${node.isSelected ? styles.nodeContainerSelected : ''}`}
       onClick={() => node.isInternal ? node.toggle() : node.select()}
     >
-      {node.isInternal && (
-        <span className="folder-arrow">{node.isOpen ? '▼' : '►'}</span>
-      )}
-      {node.data.name}
+      <Icon className={styles.nodeIcon} />
+      <span className={styles.nodeText}>{node.data.name}</span>
     </div>
   );
 };
@@ -67,6 +68,25 @@ const NodeRenderer = ({ node, style, dragHandle }: { node: NodeApi<ArboristNode>
 export const FileTreeView: React.FC<FileTreeViewProps> = ({ onFileSelect }) => {
   const [treeData, setTreeData] = useState<ArboristNode[]>([]);
   const treeRef = useRef<any>(null); // To call imperative API methods
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const resizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setHeight(entry.contentRect.height);
+      }
+    });
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
 
   const updateTree = () => {
     const root = app.vault.getAllFolders().find(f => f.isRoot());
@@ -90,7 +110,7 @@ export const FileTreeView: React.FC<FileTreeViewProps> = ({ onFileSelect }) => {
     updateTree();
     app.vault.on('create', updateTree);
     app.vault.on('delete', updateTree);
-    app.vault.on('rename', updateTree); // Good practice to also listen for rename
+    app.vault.on('rename', updateTree);
 
     return () => {
       app.vault.off('create', updateTree);
@@ -102,8 +122,6 @@ export const FileTreeView: React.FC<FileTreeViewProps> = ({ onFileSelect }) => {
   const getSelectedPath = () => {
     const selectedNode = treeRef.current?.selectedNodes[0];
     if (selectedNode) {
-      // If a folder is selected, create inside it.
-      // If a file is selected, create in its parent folder.
       return selectedNode.isInternal ? selectedNode.id : selectedNode.parent?.id || '';
     }
     return ''; // Root if nothing is selected
@@ -111,7 +129,7 @@ export const FileTreeView: React.FC<FileTreeViewProps> = ({ onFileSelect }) => {
 
   const handleAddFile = () => {
     const parentPath = getSelectedPath();
-    const fileName = prompt(`Enter file name to add in '${parentPath || '/'}':`);
+    const fileName = prompt(`Enter new file name in '${parentPath || 'vault root'}':`);
     if (fileName) {
       const fullPath = parentPath ? `${parentPath}/${fileName}` : fileName;
       app.vault.create(fullPath, `# ${fileName.split('/').pop()}\n\n`);
@@ -120,7 +138,7 @@ export const FileTreeView: React.FC<FileTreeViewProps> = ({ onFileSelect }) => {
 
   const handleAddFolder = () => {
     const parentPath = getSelectedPath();
-    const folderName = prompt(`Enter folder name to add in '${parentPath || '/'}':`);
+    const folderName = prompt(`Enter new folder name in '${parentPath || 'vault root'}':`);
     if (folderName) {
       const fullPath = parentPath ? `${parentPath}/${folderName}` : folderName;
       app.vault.createFolder(fullPath);
@@ -128,27 +146,31 @@ export const FileTreeView: React.FC<FileTreeViewProps> = ({ onFileSelect }) => {
   };
 
   return (
-    <div className="file-tree-container">
-       <div className="file-tree-header">
-        <h2>crashOS</h2>
-        <div className="actions">
-          <button onClick={handleAddFile} title="New File"><FaFileMedical /></button>
-          <button onClick={handleAddFolder} title="New Folder"><FaFolderPlus /></button>
+    <div className={styles.fileTreeViewContainer}>
+      <div className={styles.header}>
+        <h2 className={styles.headerTitle}>crashOS</h2>
+        <div className={styles.headerActions}>
+          <button onClick={handleAddFile} title="New File" className={styles.actionButton}>
+            <FaPlus />
+          </button>
+          <button onClick={handleAddFolder} title="New Folder" className={styles.actionButton}>
+            <FaFolderPlus />
+          </button>
         </div>
       </div>
-      <div className="tree-view">
+      <div className={styles.treeContainer} ref={containerRef}>
         <Tree
           ref={treeRef}
           data={treeData}
           openByDefault={false}
-          width={250}
-          height={1000} // Adjust height as needed
+          width="100%"
+          height={height}
           onActivate={(node) => {
             if (!node.isInternal) {
               onFileSelect(node.id);
             }
           }}
-          // The component passed as a child is used to render each node
+          indent={24}
         >
           {NodeRenderer}
         </Tree>

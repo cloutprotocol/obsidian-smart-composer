@@ -4,7 +4,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black for both themes */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -12,30 +12,32 @@
   }
   
   .modal-content {
-    background-color: var(--background-primary);
+    background-color: var(--color-background-secondary);
     padding: 20px;
     border-radius: var(--radius-m);
-    border: 1px solid var(--background-modifier-border);
+    border: 1px solid var(--color-background-modifier-border);
     width: 90vw;
     max-width: 1000px;
     height: 80vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    color: var(--color-text-normal);
   }
   
   .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: var(--size-4-3);
-    border-bottom: 1px solid var(--background-modifier-border);
-    margin-bottom: var(--size-4-3);
+    padding-bottom: var(--spacing-3);
+    border-bottom: 1px solid var(--color-background-modifier-border);
+    margin-bottom: var(--spacing-3);
   }
   
   .modal-header h2 {
     margin: 0;
     font-size: 1.2rem;
+    color: var(--color-text-normal);
   }
   
   .modal-close-button {
@@ -43,11 +45,11 @@
     border: none;
     cursor: pointer;
     font-size: 1.5rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
   }
 
   .modal-close-button:hover {
-    color: var(--text-normal);
+    color: var(--color-text-normal);
   }
   
   .modal-body {
@@ -59,29 +61,49 @@
   .modal-nav {
     width: 200px;
     min-width: 200px;
-    border-right: 1px solid var(--background-modifier-border);
-    padding-right: var(--size-4-4);
+    border-right: 1px solid var(--color-background-modifier-border);
+    padding-right: var(--spacing-4);
     overflow-y: auto;
   }
   
   .modal-nav-item {
-    padding: var(--size-4-2) var(--size-4-3);
+    padding: var(--spacing-2) var(--spacing-3);
     cursor: pointer;
     border-radius: var(--radius-s);
-    margin-bottom: var(--size-4-1);
+    margin-bottom: var(--spacing-1);
+    color: var(--color-text-muted);
   }
   
   .modal-nav-item:hover {
-    background-color: var(--background-modifier-hover);
+    background-color: var(--color-background-modifier-hover);
+    color: var(--color-text-normal);
   }
   
   .modal-nav-item.is-active {
-    background-color: var(--interactive-accent);
+    background-color: var(--color-interactive-accent);
     color: white;
   }
   
   .modal-main {
     flex-grow: 1;
-    padding-left: var(--size-4-4);
+    padding-left: var(--spacing-4);
     overflow-y: auto;
-  } 
+  }
+
+.settings-nav-header {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: var(--spacing-4) 0 var(--spacing-1) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.settings-tab-content h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-4);
+  color: var(--color-text-normal);
+  border-bottom: 1px solid var(--color-background-modifier-border);
+  padding-bottom: var(--spacing-2);
+} 

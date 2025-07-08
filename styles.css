@@ -365,6 +365,7 @@ input[type='text'].smtcmp-chat-list-dropdown-item-title-input {
 
   .view-content {
     padding: 0;
+    min-width:400px !important;
   }
 
   .markdown-source-view.mod-cm6 {

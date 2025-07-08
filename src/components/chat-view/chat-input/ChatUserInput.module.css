@@ -2,9 +2,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  background: #2a2a2a; /* var(--background-modifier-form-field) */
-  border: 1px solid #444; /* var(--input-border-width) solid var(--background-modifier-border) */
-  color: #d4d4d4; /* var(--text-normal) */
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-background-modifier-border);
+  color: var(--color-text-normal);
   font-family: inherit;
   padding: 0.5rem; /* calc(var(--size-2-3) + 1px) */
   font-size: 0.875rem; /* var(--font-ui-small) */
@@ -16,7 +16,8 @@
 .chatUserInputContainer:focus,
 .chatUserInputContainer:focus-visible,
 .chatUserInputContainer:active {
-  box-shadow: 0 0 0 2px #0a84ff; /* var(--background-modifier-border-focus) */
+  border-color: var(--color-interactive-accent);
+  box-shadow: 0 0 0 1px var(--color-interactive-accent);
   transition: box-shadow 0.15s ease-in-out;
 }
 
@@ -54,14 +55,14 @@
   align-items: center;
   gap: 0.25rem; /* var(--size-4-1) */
   font-size: 0.75rem; /* var(--font-smallest) */
-  color: #999; /* var(--text-muted) */
+  color: var(--color-text-muted);
   padding: 0 0.25rem; /* var(--size-2-1) */
   cursor: pointer;
   transition: all 0.1s ease-in-out;
 }
 
 .submitButton:hover {
-  color: #d4d4d4; /* var(--text-normal) */
+  color: var(--color-text-normal);
 }
 
 .submitButtonIcons {
@@ -73,20 +74,21 @@
 .fileBadge {
   display: flex;
   align-items: center;
-  background-color: #333; /* var(--background-secondary) */
-  border: 1px solid #444; /* var(--background-modifier-border) */
+  background-color: var(--color-background-primary);
+  border: 1px solid var(--color-background-modifier-border);
   border-radius: 4px; /* var(--radius-s) */
   font-size: 0.75rem; /* var(--font-smallest) */
-  padding: 0.25rem 0.5rem; /* var(--size-2-1) var(--size-4-1) */
+  padding: 0.25rem 0.5rem !important; /* var(--size-2-1) var(--size-4-1) */
   gap: 0.25rem; /* var(--size-2-1) */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+  max-height: 14px !important;
 }
 
 .fileBadgeFocused {
-  border: 1px solid #0a84ff; /* var(--interactive-accent) */
+  border: 1px solid var(--color-interactive-accent);
 }
 
 .excludedContent {
@@ -99,14 +101,14 @@
 }
 
 .fileBadge:hover {
-  background-color: #3a3a3a; /* var(--background-modifier-hover) */
+  background-color: var(--color-background-modifier-hover);
 }
 
 .deleteButton {
   height: 100%;
   display: flex;
   align-items: center;
-  color: #999; /* var(--text-muted) */
+  color: var(--color-text-muted);
 }
 
 .previewButton {
@@ -126,7 +128,7 @@
 }
 
 .badgeNameIcon {
-  color: #999; /* var(--text-muted) */
+  color: var(--color-text-muted);
 }
 
 .badgeName span {
@@ -136,21 +138,22 @@
 }
 
 .badgeNameSuffix {
-  color: #777; /* var(--text-faint) */
+  color: var(--color-text-muted);
   flex-grow: 0;
 }
 
 .badgeCurrent {
-  color: #ccc; /* var(--color-base-50) */
+  color: var(--color-text-normal);
 }
 
 .contentPreview {
-  background-color: #333; /* var(--background-secondary) */
+  background-color: var(--color-background-primary);
   border-radius: 4px; /* var(--radius-s) */
-  border: 1px solid #444; /* var(--background-modifier-border) */
-  max-height: 350px;
+  border: 1px solid var(--color-background-modifier-border);
+  max-height: 150px;
   overflow-y: auto;
-  padding: 0 0.5rem; /* var(--size-4-2) */
+  padding: 1rem 0.5rem 1.2rem; /* var(--size-4-2) */
+  margin:10px;
 }
 
 .contentPreview img {
@@ -159,8 +162,8 @@
 }
 
 .lexicalRoot .mention {
-  background-color: #4a4a4a; /* var(--tag-background) */
-  color: #d4d4d4; /* var(--tag-color) */
+  background-color: var(--color-background-modifier-hover);
+  color: var(--color-text-normal);
   padding: 0.25rem; /* var(--size-2-1) */
   border-radius: 4px; /* var(--radius-s) */
   word-break: break-all;

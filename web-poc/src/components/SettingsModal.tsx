@@ -11,6 +11,7 @@ import { SettingsTabRoot } from 'src/components/settings/SettingsTabRoot';
 import { app, PluginSettingTab } from '../lib/obsidian-api';
 import SmartComposerPlugin from 'src/main';
 import './SettingsModal.css';
+import { useTheme } from '../contexts/theme-context';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -23,37 +24,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   plugin,
 }) => {
-  const [activeTab, setActiveTab] = useState<PluginSettingTab | null>(null);
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<ReturnType<typeof createRoot> | null>(null);
+  const { theme, toggleTheme } = useTheme();
 
   const settingTabs = app.settingTabs;
 
   // Effect to manage the active tab based on the modal's open state.
   useEffect(() => {
     if (isOpen) {
-      // When the modal opens, set the first available tab as active.
-      if (settingTabs.length > 0) {
-        setActiveTab(settingTabs[0]);
-      }
+      // When the modal opens, set 'appearance' as the active tab.
+      setActiveTabId('appearance');
     } else {
-      // When the modal closes, clear the active tab. The display effect's
-      // cleanup function will then handle hiding the content.
-      setActiveTab(null);
+      // When the modal closes, clear the active tab.
+      setActiveTabId(null);
     }
-  }, [isOpen, settingTabs]);
+  }, [isOpen]);
 
-  // Effect to render the content of the active tab. This is the core
-  // of the declarative approach.
+  // Effect to render the content of the active tab.
   useEffect(() => {
-    if (activeTab && contentRef.current && plugin) {
-      // Create a new React root if one doesn't exist for the content element.
+    // If the active tab is not 'appearance' or there's no plugin, render the plugin's settings
+    if (activeTabId && activeTabId !== 'appearance' && contentRef.current && plugin) {
       if (!rootRef.current) {
         rootRef.current = createRoot(contentRef.current);
       }
 
-      // Render the settings tab content within all the necessary contexts.
-      // This is the key change to solve the context availability issue.
+      // Find the actual plugin setting tab to render
+      const activePluginTab = settingTabs.find(t => t.id === activeTabId);
+      if (!activePluginTab) return;
+
+      // This is a bit of a hack to make the original settings tab work
+      // by setting it as the "active" one for the root component to pick up.
+      app.setting.activeTab = activePluginTab;
+
       rootRef.current.render(
         <React.StrictMode>
           <AppProvider app={app as any}>
@@ -89,18 +93,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       rootRef.current?.unmount();
       rootRef.current = null;
     };
-  }, [activeTab, plugin]); // This effect now depends on the plugin instance.
+  }, [activeTabId, plugin, settingTabs]);
 
   if (!isOpen) {
     return null;
   }
 
-  const handleTabClick = (tab: PluginSettingTab) => {
-    // By simply updating the state, we let the useEffect hooks handle the
-    // hide/display logic. This is the declarative React way and avoids
-    // potential race conditions from manual, imperative calls.
-    setActiveTab(tab);
+  const handleTabClick = (tabId: string) => {
+    setActiveTabId(tabId);
   };
+
+  const isPluginTabActive = activeTabId && activeTabId !== 'appearance';
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -116,21 +119,56 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
         <div className="modal-body">
           <div className="modal-nav">
+            <div className="settings-nav-header">Appearance</div>
+            <div
+              className={`modal-nav-item ${
+                activeTabId === 'appearance' ? 'is-active' : ''
+              }`}
+              onClick={() => handleTabClick('appearance')}
+            >
+              Theme
+            </div>
             <div className="settings-nav-header">Plugin Settings</div>
             {settingTabs.map((tab) => (
               <div
                 key={tab.id}
                 className={`modal-nav-item ${
-                  activeTab?.id === tab.id ? 'is-active' : ''
+                  activeTabId === tab.id ? 'is-active' : ''
                 }`}
-                onClick={() => handleTabClick(tab)}
+                onClick={() => handleTabClick(tab.id)}
               >
                 {tab.name}
               </div>
             ))}
           </div>
-          <div className="modal-main" ref={contentRef}>
-            {/* Content is rendered here by the plugin's display() method */}
+          <div className="modal-main">
+            {activeTabId === 'appearance' ? (
+              <div className="settings-tab-content">
+                <h3>Theme</h3>
+                <div className="setting-item">
+                  <div className="setting-item-info">
+                    <div className="setting-item-name">Appearance</div>
+                    <div className="setting-item-description">
+                      Switch between light and dark mode.
+                    </div>
+                  </div>
+                  <div className="setting-item-control">
+                    <label className="checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={theme === 'dark'}
+                        onChange={toggleTheme}
+                      />
+                      <div className="slider"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div ref={contentRef} style={{ display: isPluginTabActive ? 'block' : 'none' }}>
+                {/* Plugin settings content is rendered here by the effect */}
+              </div>
+            )}
           </div>
         </div>
       </div>

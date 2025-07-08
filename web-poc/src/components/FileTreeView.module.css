@@ -1,0 +1,104 @@
+/* ==========================================================================
+   File Tree View - Main Container
+   ========================================================================== */
+.fileTreeViewContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--color-background-secondary);
+}
+
+/* ==========================================================================
+   Header
+   ========================================================================== */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-3) var(--spacing-2);
+  border-bottom: 1px solid var(--color-background-modifier-border);
+  flex-shrink: 0;
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  /* A subtle gradient for the "presidential" look */
+  background: linear-gradient(
+    180deg,
+    var(--color-text-normal),
+    var(--color-text-muted)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+}
+
+.headerActions {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.actionButton {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: var(--spacing-1);
+  border-radius: var(--radius-s);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionButton:hover {
+  background-color: var(--color-background-modifier-hover);
+  color: var(--color-text-normal);
+}
+
+/* ==========================================================================
+   Tree View
+   ========================================================================== */
+.treeContainer {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: var(--spacing-2) 0;
+}
+
+.nodeContainer {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-1) var(--spacing-3);
+  cursor: pointer;
+  border-radius: var(--radius-s);
+  margin: 0 var(--spacing-2);
+  color: var(--color-text-muted);
+}
+
+.nodeContainer:hover {
+  background-color: var(--color-background-modifier-hover);
+  color: var(--color-text-normal);
+}
+
+.nodeContainerSelected {
+  background-color: var(--color-background-modifier-border);
+  color: var(--color-text-normal) !important; /* Override muted color */
+}
+
+.nodeContainerSelected:hover {
+  background-color: var(--color-background-modifier-border); /* Keep selection color on hover */
+  color: var(--color-text-normal) !important;
+}
+
+.nodeIcon {
+  margin-right: var(--spacing-2);
+  flex-shrink: 0;
+}
+
+.nodeText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+} 

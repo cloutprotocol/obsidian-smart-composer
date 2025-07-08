@@ -893,6 +893,9 @@ export class App {
     public fileManager: any = {};
     public lastEvent: any = null;
     public settingTabs: PluginSettingTab[] = [];
+    public setting: any = {
+      activeTab: null,
+    };
     public plugins: any = {
         plugins: {},
     };
