@@ -67,6 +67,12 @@ function setupMarkdownLinks(
   sourcePath: string,
   showLinkHover?: boolean,
 ) {
+  // Add a guard clause to prevent crashes if the container element
+  // is not yet available in the DOM when this function is called.
+  if (!containerEl) {
+    return;
+  }
+
   containerEl.querySelectorAll('a.internal-link').forEach((el) => {
     el.addEventListener('click', (evt: MouseEvent) => {
       evt.preventDefault()

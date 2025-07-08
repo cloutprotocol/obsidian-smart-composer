@@ -279,6 +279,12 @@ class Vault extends EventEmitter {
     }
 
     async read(file: TFile): Promise<string> {
+        // Add a guard clause to prevent crashes on undefined input,
+        // which can happen during component lifecycle races.
+        if (!file || !file.path) {
+            throw new Error(`File not found: ${file?.path}`);
+        }
+
         const { node } = findNode(file.path);
         if (node && node.type === 'file') {
             return node.content;
