@@ -3,13 +3,13 @@ import { Editor, MarkdownView, Notice, Plugin } from 'obsidian'
 import { ApplyView } from './ApplyView'
 import { ChatView } from './ChatView'
 import { ChatProps } from './components/chat-view/Chat'
-import { InstallerUpdateRequiredModal } from './components/modals/InstallerUpdateRequiredModal'
+// import { InstallerUpdateRequiredModal } from './components/modals/InstallerUpdateRequiredModal'
 import { APPLY_VIEW_TYPE, CHAT_VIEW_TYPE } from './constants'
-import { McpManager } from './core/mcp/mcpManager'
-import { RAGEngine } from './core/rag/ragEngine'
-import { DatabaseManager } from './database/DatabaseManager'
-import { PGLiteAbortedException } from './database/exception'
-import { migrateToJsonDatabase } from './database/json/migrateToJsonDatabase'
+// import { McpManager } from './core/mcp/mcpManager'
+// import { RAGEngine } from './core/rag/ragEngine'
+// import { DatabaseManager } from './database/DatabaseManager'
+// import { PGLiteAbortedException } from './database/exception'
+// import { migrateToJsonDatabase } from './database/json/migrateToJsonDatabase'
 import {
   SmartComposerSettings,
   smartComposerSettingsSchema,
@@ -17,16 +17,17 @@ import {
 import { parseSmartComposerSettings } from './settings/schema/settings'
 import { SmartComposerSettingTab } from './settings/SettingTab'
 import { getMentionableBlockData } from './utils/obsidian'
+import { WorkspaceLeaf } from 'obsidian'
 
 export default class SmartComposerPlugin extends Plugin {
   settings: SmartComposerSettings
   initialChatProps?: ChatProps // TODO: change this to use view state like ApplyView
   settingsChangeListeners: ((newSettings: SmartComposerSettings) => void)[] = []
-  mcpManager: McpManager | null = null
-  dbManager: DatabaseManager | null = null
-  ragEngine: RAGEngine | null = null
-  private dbManagerInitPromise: Promise<DatabaseManager> | null = null
-  private ragEngineInitPromise: Promise<RAGEngine> | null = null
+  // mcpManager: McpManager | null = null
+  // dbManager: DatabaseManager | null = null
+  // ragEngine: RAGEngine | null = null
+  // private dbManagerInitPromise: Promise<DatabaseManager> | null = null
+  // private ragEngineInitPromise: Promise<RAGEngine> | null = null
   private timeoutIds: ReturnType<typeof setTimeout>[] = [] // Use ReturnType instead of number
 
   async onload() {
@@ -36,9 +37,11 @@ export default class SmartComposerPlugin extends Plugin {
     this.registerView(APPLY_VIEW_TYPE, (leaf) => new ApplyView(leaf))
 
     // This creates an icon in the left ribbon.
-    this.addRibbonIcon('wand-sparkles', 'Open smart composer', () =>
-      this.openChatView(),
-    )
+    this.addRibbonIcon('wand-sparkles', 'Open smart composer', () => {
+      // Use a timeout to defer execution until after the DOM is ready.
+      // This is a common pattern to avoid race conditions with UI frameworks.
+      setTimeout(() => this.openChatView(), 0)
+    })
 
     // This adds a simple command that can be triggered anywhere
     this.addCommand({
@@ -55,6 +58,7 @@ export default class SmartComposerPlugin extends Plugin {
       },
     })
 
+    /*
     this.addCommand({
       id: 'rebuild-vault-index',
       name: 'Rebuild entire vault index',
@@ -124,11 +128,12 @@ export default class SmartComposerPlugin extends Plugin {
         }
       },
     })
+    */
 
     // This adds a settings tab so the user can configure various aspects of the plugin
     this.addSettingTab(new SmartComposerSettingTab(this.app, this))
 
-    void this.migrateToJsonStorage()
+    // void this.migrateToJsonStorage()
   }
 
   onunload() {
@@ -137,20 +142,20 @@ export default class SmartComposerPlugin extends Plugin {
     this.timeoutIds = []
 
     // RagEngine cleanup
-    this.ragEngine?.cleanup()
-    this.ragEngine = null
+    // this.ragEngine?.cleanup()
+    // this.ragEngine = null
 
     // Promise cleanup
-    this.dbManagerInitPromise = null
-    this.ragEngineInitPromise = null
+    // this.dbManagerInitPromise = null
+    // this.ragEngineInitPromise = null
 
     // DatabaseManager cleanup
-    this.dbManager?.cleanup()
-    this.dbManager = null
+    // this.dbManager?.cleanup()
+    // this.dbManager = null
 
     // McpManager cleanup
-    this.mcpManager?.cleanup()
-    this.mcpManager = null
+    // this.mcpManager?.cleanup()
+    // this.mcpManager = null
   }
 
   async loadSettings() {
@@ -169,7 +174,7 @@ ${validationResult.error.issues.map((v) => v.message).join('\n')}`)
 
     this.settings = newSettings
     await this.saveData(newSettings)
-    this.ragEngine?.setSettings(newSettings)
+    // this.ragEngine?.setSettings(newSettings)
     this.settingsChangeListeners.forEach((listener) => listener(newSettings))
   }
 
@@ -201,23 +206,30 @@ ${validationResult.error.issues.map((v) => v.message).join('\n')}`)
   }
 
   async activateChatView(chatProps?: ChatProps, openNewChat = false) {
-    // chatProps is consumed in ChatView.tsx
     this.initialChatProps = chatProps
 
-    const leaf = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0]
+    let leaf: WorkspaceLeaf | null =
+      this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0]
 
-    await (leaf ?? this.app.workspace.getRightLeaf(false))?.setViewState({
+    if (!leaf) {
+      leaf = this.app.workspace.getRightLeaf(true) // Create leaf if it doesn't exist
+    }
+
+    if (!leaf) {
+      console.error('Failed to get or create a leaf for the chat view.')
+      return
+    }
+
+    await leaf.setViewState({
       type: CHAT_VIEW_TYPE,
       active: true,
     })
 
-    if (openNewChat && leaf && leaf.view instanceof ChatView) {
+    if (openNewChat && leaf.view instanceof ChatView) {
       leaf.view.openNewChat(chatProps?.selectedBlock)
     }
 
-    this.app.workspace.revealLeaf(
-      this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0],
-    )
+    this.app.workspace.revealLeaf(leaf)
   }
 
   async addSelectionToChat(editor: Editor, view: MarkdownView) {
@@ -240,6 +252,7 @@ ${validationResult.error.issues.map((v) => v.message).join('\n')}`)
     chatView.focusMessage()
   }
 
+  /*
   async getDbManager(): Promise<DatabaseManager> {
     if (this.dbManager) {
       return this.dbManager
@@ -248,19 +261,19 @@ ${validationResult.error.issues.map((v) => v.message).join('\n')}`)
     if (!this.dbManagerInitPromise) {
       this.dbManagerInitPromise = (async () => {
         try {
-          this.dbManager = await DatabaseManager.create(this.app)
-          return this.dbManager
-        } catch (error) {
-          this.dbManagerInitPromise = null
-          if (error instanceof PGLiteAbortedException) {
+          const dbManager = new DatabaseManager(this.settings)
+          await dbManager.init()
+          this.dbManager = dbManager
+          return dbManager
+        } catch (e) {
+          if (e instanceof PGLiteAbortedException) {
             new InstallerUpdateRequiredModal(this.app).open()
           }
-          throw error
+          throw e
         }
       })()
     }
 
-    // if initialization is running, wait for it to complete instead of creating a new initialization promise
     return this.dbManagerInitPromise
   }
 
@@ -271,18 +284,14 @@ ${validationResult.error.issues.map((v) => v.message).join('\n')}`)
 
     if (!this.ragEngineInitPromise) {
       this.ragEngineInitPromise = (async () => {
-        try {
-          const dbManager = await this.getDbManager()
-          this.ragEngine = new RAGEngine(
-            this.app,
-            this.settings,
-            dbManager.getVectorManager(),
-          )
-          return this.ragEngine
-        } catch (error) {
-          this.ragEngineInitPromise = null
-          throw error
-        }
+        const ragEngine = new RAGEngine(
+          this.app,
+          await this.getDbManager(),
+          this.settings,
+        )
+        await ragEngine.init()
+        this.ragEngine = ragEngine
+        return ragEngine
       })()
     }
 
@@ -293,49 +302,51 @@ ${validationResult.error.issues.map((v) => v.message).join('\n')}`)
     if (this.mcpManager) {
       return this.mcpManager
     }
-
-    try {
-      this.mcpManager = new McpManager({
-        settings: this.settings,
-        registerSettingsListener: (
-          listener: (settings: SmartComposerSettings) => void,
-        ) => this.addSettingsChangeListener(listener),
-      })
-      await this.mcpManager.initialize()
-      return this.mcpManager
-    } catch (error) {
-      this.mcpManager = null
-      throw error
-    }
+    const mcpManager = new McpManager()
+    this.mcpManager = mcpManager
+    return mcpManager
   }
 
   private registerTimeout(callback: () => void, timeout: number): void {
-    const timeoutId = setTimeout(callback, timeout)
-    this.timeoutIds.push(timeoutId)
+    const id = setTimeout(callback, timeout)
+    this.timeoutIds.push(id)
   }
 
   private async migrateToJsonStorage() {
     try {
-      const dbManager = await this.getDbManager()
-      await migrateToJsonDatabase(this.app, dbManager, async () => {
-        await this.reloadChatView()
-        console.log('Migration to JSON storage completed successfully')
-      })
+      if (!this.settings.embedding.json.migrated) {
+        const notice = new Notice('Migrating to JSON storage...', 0)
+        try {
+          await migrateToJsonDatabase(this.app)
+          await this.setSettings({
+            ...this.settings,
+            embedding: {
+              ...this.settings.embedding,
+              json: { ...this.settings.embedding.json, migrated: true },
+            },
+          })
+          notice.setMessage('Migration to JSON storage complete')
+        } catch (error) {
+          console.error(error)
+          notice.setMessage('Migration to JSON storage failed')
+        } finally {
+          this.registerTimeout(() => {
+            notice.hide()
+          }, 1000)
+        }
+      }
     } catch (error) {
-      console.error('Failed to migrate to JSON storage:', error)
-      new Notice(
-        'Failed to migrate to JSON storage. Please check the console for details.',
-      )
+      console.error(error)
+      new Notice('Error checking for JSON storage migration')
     }
   }
 
   private async reloadChatView() {
-    const leaves = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)
-    if (leaves.length === 0 || !(leaves[0].view instanceof ChatView)) {
-      return
+    const leaf = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0]
+    if (leaf) {
+      await leaf.setViewState({ type: CHAT_VIEW_TYPE, active: true })
+      this.app.workspace.revealLeaf(leaf)
     }
-    new Notice('Reloading "smart-composer" due to migration', 1000)
-    leaves[0].detach()
-    await this.activateChatView()
   }
+  */
 }

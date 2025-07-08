@@ -8,6 +8,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'src': path.resolve(__dirname, '../src'),
+      'obsidian': path.resolve(__dirname, './src/lib/obsidian-api.ts'),
     },
   },
 }) 
