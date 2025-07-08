@@ -11,6 +11,7 @@ import { app, initializeFileSystem, Command, Editor, MarkdownView, TFile } from 
 import SmartComposerPlugin from 'src/main';
 import { WorkspaceLeaf } from './lib/obsidian-api';
 import { ApplyView } from 'src/ApplyView';
+import ApplyViewRoot from 'src/components/apply-view/ApplyViewRoot';
 
 import { AppProvider } from 'src/contexts/app-context';
 import { McpProvider } from 'src/contexts/mcp-context';
@@ -24,20 +25,6 @@ export interface VirtualFile {
   mtime?: number;
 }
 export type FileSystemState = Record<string, VirtualFile>; // filename -> file object
-
-const ActiveLeafRenderer: React.FC<{ activeLeaf: WorkspaceLeaf | null }> = ({ activeLeaf }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (container && activeLeaf?.view.containerEl) {
-      container.innerHTML = ''; // Clear previous view
-      container.appendChild(activeLeaf.view.containerEl);
-    }
-  }, [activeLeaf]);
-
-  return <div ref={containerRef} style={{ height: '100%' }} />;
-};
 
 const App: React.FC = () => {
   const [plugin, setPlugin] = useState<SmartComposerPlugin | null>(null);
@@ -61,14 +48,15 @@ const App: React.FC = () => {
   // This prevents it from being recreated on every render, and it correctly
   // captures the 'activeLeaf' dependency.
   const handleFileModify = useCallback(async (file: TFile) => {
-    if (activeLeaf?.view.file?.path === file.path) {
-      const newContent = await app.vault.read(file);
-      setFileSystem(prevFs => ({
+    // Check if the modified file is present in our state
+    if (fileSystem[file.path]) {
+      const newContent = await app.vault.read(file)
+      setFileSystem((prevFs) => ({
         ...prevFs,
         [file.path]: { ...prevFs[file.path], content: newContent },
-      }));
+      }))
     }
-  }, [activeLeaf]); // Dependency on activeLeaf ensures we always have the latest value
+  }, [fileSystem]) // Dependency on fileSystem ensures we have the latest state
 
   useEffect(() => {
     app.vault.on('modify', handleFileModify);
@@ -133,6 +121,7 @@ const App: React.FC = () => {
       
       const newPlugin = new SmartComposerPlugin(app as any, pluginManifest as any);
       await newPlugin.onload();
+      app.plugins.plugins[pluginManifest.id] = newPlugin;
       
       // Manually register the ApplyView, since this is normally handled by the
       // plugin's onload method in the real Obsidian environment. This makes
@@ -251,40 +240,63 @@ const App: React.FC = () => {
                       onFileSelect={handleFileSelect}
                     />
                   </div>
-                  <div className="main-content">
-                    <div className="editor-container">
-                      <div className="tab-container">
-                        {openLeaves.map(leaf => (
-                          <div
-                            key={leaf.id}
-                            className={`tab-item ${activeLeaf === leaf ? 'is-active' : ''}`}
-                            onClick={() => app.workspace.setActiveLeaf(leaf)}
+                  <div className="main-view-container">
+                    <div className="tab-container">
+                      {openLeaves.map((leaf) => (
+                        <div
+                          key={leaf.id}
+                          className={`tab ${activeLeaf === leaf ? 'active' : ''}`}
+                          onClick={() => app.workspace.setActiveLeaf(leaf)}
+                        >
+                          {leaf.view.getDisplayText()}
+                          <button
+                            className="close-tab-button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleCloseTab(leaf)
+                            }}
                           >
-                            <span>{leaf.view.getDisplayText()}</span>
-                            <button className="close-tab-button" onClick={(e) => {
-                              e.stopPropagation();
-                              handleCloseTab(leaf);
-                            }}>x</button>
-                          </div>
-                        ))}
-                      </div>
-                      {activeLeaf?.getViewState().type === 'markdown' ? (
+                            &times;
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="editor-container">
+                      {activeLeaf && activeLeaf.getViewState().type === 'markdown' ? (
                         <MarkdownEditor
-                          activeFile={activeLeaf?.view.file?.path}
-                          fileContent={activeLeaf?.view.file ? fileSystem[activeLeaf.view.file.path]?.content : ''}
+                          activeFile={activeLeaf.view.file?.path || null}
+                          fileContent={
+                            activeLeaf.view.file
+                              ? fileSystem[activeLeaf.view.file.path]?.content
+                              : ''
+                          }
                           onContentChange={(newContent) => {
-                            if (activeLeaf?.view.file) {
-                              app.vault.modify(activeLeaf.view.file, newContent);
+                            if (activeLeaf.view.file) {
+                              app.vault.modify(
+                                activeLeaf.view.file,
+                                newContent,
+                              )
                             }
                           }}
                         />
+                      ) : activeLeaf && activeLeaf.getViewState().type === 'smtcmp-apply-view' ? (
+                        <ApplyViewRoot
+                          state={activeLeaf.view.getState()}
+                          close={() => handleCloseTab(activeLeaf)}
+                        />
                       ) : (
-                        <ActiveLeafRenderer activeLeaf={activeLeaf} />
+                        <div className="no-file-open">
+                          <p>No file is open.</p>
+                          <p>Select a file from the list to get started.</p>
+                        </div>
                       )}
                     </div>
-                    <div className={`right-sidebar ${isRightSidebarVisible ? 'is-visible' : ''}`} ref={rightSidebarRef}>
-                      {/* The ChatView will be activated here by the plugin */}
-                    </div>
+                  </div>
+                  <div
+                    className={`right-sidebar ${isRightSidebarVisible ? 'is-visible' : ''}`}
+                    ref={rightSidebarRef}
+                  >
+                    {/* The ChatView will be activated here by the plugin */}
                   </div>
                 </div>
               </McpProvider>

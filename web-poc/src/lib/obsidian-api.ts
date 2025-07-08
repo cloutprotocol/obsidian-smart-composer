@@ -729,6 +729,7 @@ class Workspace extends EventEmitter {
                 // Note: We don't append it here because the React UI will manage the DOM rendering
                 const newLeaf = new WorkspaceLeaf(this.app, leafContainer as HTMLElement);
                 this.leaves.push(newLeaf);
+                this.setActiveLeaf(newLeaf);
                 return newLeaf;
             } else {
                 throw new Error("Could not find '.editor-container' to create a leaf.");
@@ -870,6 +871,9 @@ export class App {
     public fileManager: any = {};
     public lastEvent: any = null;
     public settingTabs: PluginSettingTab[] = [];
+    public plugins: any = {
+        plugins: {},
+    };
 
     constructor() {
         this.vault = new Vault();

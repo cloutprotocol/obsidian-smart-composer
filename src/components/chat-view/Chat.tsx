@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { CircleStop, History, Plus } from 'lucide-react'
-import { App, Notice } from 'obsidian'
+import { App, Notice, TFile } from 'obsidian'
 import {
   forwardRef,
   useCallback,
@@ -11,6 +11,7 @@ import {
   useState,
 } from 'react'
 import { v4 as uuidv4 } from 'uuid'
+import { createPatch } from 'diff'
 
 import { ApplyViewState } from '../../ApplyView'
 import { APPLY_VIEW_TYPE } from '../../constants'
@@ -277,47 +278,36 @@ const Chat = forwardRef<ChatRef, ChatProps>((props, ref) => {
     ],
   )
 
-  const applyMutation = useMutation({
-    mutationFn: async ({
-      blockToApply,
-      chatMessages,
-    }: {
-      blockToApply: string
-      chatMessages: ChatMessage[]
-    }) => {
-      const activeFile = app.workspace.getActiveFile()
-      if (!activeFile) {
-        throw new Error(
-          'No file is currently open to apply changes. Please open a file and try again.',
-        )
-      }
-      const activeFileContent = await readTFileContent(activeFile, app.vault)
-
-      const { providerClient, model } = getChatModelClient({
-        settings,
-        modelId: settings.applyModelId,
-      })
-
-      const updatedFileContent = await applyChangesToFile({
-        blockToApply,
-        currentFile: activeFile,
-        currentFileContent: activeFileContent,
-        chatMessages,
-        providerClient,
-        model,
-      })
-      if (!updatedFileContent) {
-        throw new Error('Failed to apply changes')
+  const {
+    mutate: applyChangesMutation,
+    isPending,
+  } = useMutation({
+    mutationFn: applyChangesToFile,
+    onSuccess: async (data, variables) => {
+      const { currentFile, currentFileContent } = variables
+      if (!data) {
+        new Notice('No changes to apply')
+        return
       }
 
-      await app.workspace.getLeaf(true).setViewState({
+      const diff = createPatch(
+        currentFile.name,
+        currentFileContent,
+        data,
+        '',
+        '',
+      )
+
+      const leaf = app.workspace.getLeaf(true)
+      await leaf.setViewState({
         type: APPLY_VIEW_TYPE,
         active: true,
         state: {
-          file: activeFile,
-          originalContent: activeFileContent,
-          newContent: updatedFileContent,
-        } satisfies ApplyViewState,
+          file: currentFile,
+          originalContent: currentFileContent,
+          newContent: data,
+          diff,
+        } as ApplyViewState,
       })
     },
     onError: (error) => {
@@ -331,17 +321,39 @@ const Chat = forwardRef<ChatRef, ChatProps>((props, ref) => {
         }).open()
       } else {
         new Notice(error.message)
-        console.error('Failed to apply changes', error)
+        console.error('Apply changes mutation failed:', error)
       }
     },
   })
 
-  const handleApply = useCallback(
-    (blockToApply: string, chatMessages: ChatMessage[]) => {
-      applyMutation.mutate({ blockToApply, chatMessages })
-    },
-    [applyMutation],
-  )
+  const handleApply = async (
+    blockToApply: string,
+    chatMessages: ChatMessage[],
+  ) => {
+    const activeFile = app.workspace.getActiveFile()
+    if (!activeFile) {
+      new Notice(
+        'No file is currently open to apply changes. Please open a file and try again.',
+      )
+      return
+    }
+
+    const activeFileContent = await readTFileContent(activeFile, app.vault)
+
+    const { providerClient, model } = getChatModelClient({
+      settings,
+      modelId: settings.chatModelId,
+    })
+
+    applyChangesMutation({
+      blockToApply,
+      currentFile: activeFile,
+      currentFileContent: activeFileContent,
+      chatMessages,
+      providerClient,
+      model,
+    })
+  }
 
   const handleToolMessageUpdate = useCallback(
     async (toolMessage: ChatToolMessage) => {
@@ -665,7 +677,7 @@ const Chat = forwardRef<ChatRef, ChatProps>((props, ref) => {
                     : messageOrGroup,
                 )}
               conversationId={currentConversationId}
-              isApplying={applyMutation.isPending}
+              isApplying={isPending}
               onApply={handleApply}
               onToolMessageUpdate={handleToolMessageUpdate}
             />

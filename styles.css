@@ -113,94 +113,26 @@
   }
 }
 
+/* Chat View */
 .smtcmp-chat-container {
   display: flex;
-  position: relative;
   flex-direction: column;
   height: 100%;
-
-  .smtcmp-stop-gen-btn {
-    z-index: 1000;
-    position: absolute;
-    bottom: 160px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: var(--size-4-1);
-  }
 }
 
 .smtcmp-chat-messages {
   flex-grow: 1;
   overflow-y: auto;
-  user-select: text;
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-4-1);
-  padding: var(--size-4-1);
-  margin: calc(var(--size-4-1) * -1);
-
-  .smtcmp-chat-messages-user {
-    display: flex;
-    flex-direction: column;
-    gap: var(--size-4-1);
-  }
-
-  .smtcmp-chat-messages-assistant {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .smtcmp-assistant-tool-message-group {
-    padding-bottom: var(--size-4-2);
-    display: flex;
-    flex-direction: column;
-    gap: var(--size-4-1);
-  }
+  padding: 0 var(--size-4-3);
 }
 
-.obsidian-default-textarea {
-  -webkit-app-region: no-drag;
-  background: var(--background-modifier-form-field);
-  color: var(--text-normal);
-  font-family: inherit;
+.workspace-leaf-content[data-type='smtcmp-chat-view'] {
   padding: 0;
-  font-size: var(--font-ui-small);
-  outline: none;
-  min-height: 80px;
-  max-height: 200px;
-  overflow-y: auto;
-  font-size: var(--font-ui-small);
-  padding: var(--size-2-1);
-  resize: none;
 }
 
-@media (hover: hover) {
-  .obsidian-default-textarea:hover {
-    border-color: var(--background-modifier-border-hover);
-    transition:
-      box-shadow 0.15s ease-in-out,
-      border 0.15s ease-in-out;
-  }
-}
-.obsidian-default-textarea:active {
-  border-color: var(--background-modifier-border-focus);
-  transition:
-    box-shadow 0.15s ease-in-out,
-    border 0.15s ease-in-out;
-}
-
-/* .obsidian-default-textarea::placeholder {
-  color: var(--text-faint);
-} */
-.obsidian-default-textarea {
-  line-height: var(--line-height-tight);
-}
-
-/**
- * ChatUserInput
- */
+/* ==========================================================================
+   Chat Input
+   ========================================================================== */
 
 .smtcmp-lexical-content-editable-root .mention {
   background-color: var(--tag-background);

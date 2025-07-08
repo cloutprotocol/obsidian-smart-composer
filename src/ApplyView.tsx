@@ -1,23 +1,30 @@
-import { TFile, View, WorkspaceLeaf } from 'obsidian'
+import { ItemView, WorkspaceLeaf } from 'obsidian'
 import { Root, createRoot } from 'react-dom/client'
 
 import ApplyViewRoot from './components/apply-view/ApplyViewRoot'
 import { APPLY_VIEW_TYPE } from './constants'
 import { AppProvider } from './contexts/app-context'
+import { PluginProvider } from './contexts/plugin-context'
+import { TFile } from 'web-poc/src/lib/obsidian-api'
 
 export type ApplyViewState = {
   file: TFile
   originalContent: string
   newContent: string
+  diff: string
 }
 
-export class ApplyView extends View {
+export class ApplyView extends ItemView {
   private root: Root | null = null
-
-  private state: ApplyViewState | null = null
+  private viewState: ApplyViewState = {
+    file: {} as TFile,
+    originalContent: '',
+    newContent: '',
+    diff: '',
+  }
 
   constructor(leaf: WorkspaceLeaf) {
-    super(leaf as any)
+    super(leaf)
   }
 
   getViewType() {
@@ -25,29 +32,44 @@ export class ApplyView extends View {
   }
 
   getDisplayText() {
-    return `Applying: ${this.state?.file?.name ?? ''}`
-  }
-
-  async setState(state: ApplyViewState) {
-    this.state = state
-    // Should render here because onOpen is called before setState
-    this.render()
+    return `Applying: ${this.viewState.file.name}`
   }
 
   async onOpen() {
     this.root = createRoot(this.containerEl)
+    this.render()
   }
 
   async onClose() {
     this.root?.unmount()
   }
 
-  async render() {
-    if (!this.root || !this.state) return
-    this.root.render(
-      <AppProvider app={this.app}>
-        <ApplyViewRoot state={this.state} close={() => this.leaf.detach()} />
-      </AppProvider>,
-    )
+  getState() {
+    return this.viewState
+  }
+
+  async setState(state: any, options: any) {
+    this.viewState = state
+    this.render()
+    return
+  }
+
+  render() {
+    if (this.root) {
+      this.root.render(
+        <AppProvider app={this.app}>
+          <PluginProvider
+            plugin={
+              (this.app as any).plugins.plugins['smart-composer'] as any
+            }
+          >
+            <ApplyViewRoot
+              state={this.viewState}
+              close={() => this.leaf.detach()}
+            />
+          </PluginProvider>
+        </AppProvider>,
+      )
+    }
   }
 }
