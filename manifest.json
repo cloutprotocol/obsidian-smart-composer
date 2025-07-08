@@ -7,5 +7,6 @@
   "author": "Heesu Suh",
   "authorUrl": "https://github.com/glowingjade",
   "fundingUrl": "https://buymeacoffee.com/kevin.on",
-  "isDesktopOnly": false
+  "isDesktopOnly": false,
+  "css": "styles.css"
 }
