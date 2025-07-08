@@ -15,6 +15,20 @@ interface MarkdownEditorProps {
 }
 
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile, fileContent, onContentChange }) => {
+  const [content, setContent] = useState(fileContent);
+
+  useEffect(() => {
+    setContent(fileContent);
+  }, [fileContent]);
+  
+  const handleContentChange = (value: string) => {
+    setContent(value);
+
+    if (onContentChange) {
+      onContentChange(value);
+    }
+  };
+
   const [wordWrap, setWordWrap] = useState(true);
 
   // This memoized value provides the necessary CodeMirror extension to enable/disable line wrapping.
@@ -33,8 +47,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile, file
   return (
     <div className="editor-container">
       <Markdown
-        value={fileContent}
-        onChange={onContentChange}
+        value={content}
+        onChange={handleContentChange}
         height="calc(100vh - 120px)"
         extensions={extensions}
         style={{

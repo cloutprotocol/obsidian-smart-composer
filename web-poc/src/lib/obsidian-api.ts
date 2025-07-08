@@ -707,8 +707,8 @@ class Workspace extends EventEmitter {
     getActiveFile(): TFile | null {
         // This is now the single source of truth for the active file, derived
         // from the active leaf's view. This resolves the core state bug.
-        if (this.activeLeaf && this.activeLeaf.view instanceof MarkdownView) {
-            return this.activeLeaf.view.file;
+        if (this.activeLeaf && this.activeLeaf.getViewState().type === 'markdown') {
+            return (this.activeLeaf.view as MarkdownView).file;
         }
         return null;
     }
