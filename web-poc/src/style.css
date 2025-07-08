@@ -288,3 +288,6 @@ select:focus {
   border-color: var(--interactive-accent);
   box-shadow: 0 0 0 2px var(--interactive-accent-hover);
 } 
+
+/* plugin */
+

@@ -3,13 +3,14 @@
  * It orchestrates the main layout, including the `FileTreeView` and `MarkdownEditor`,
  * and manages the application's global state, such as the currently active file.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FileTreeView } from './components/FileTreeView';
 import { MarkdownEditor } from './components/MarkdownEditor';
 import { SettingsModal } from './components/SettingsModal';
 import { app, linkObsidianApiState, Command, Editor, MarkdownView, TFile } from './lib/obsidian-api';
 import SmartComposerPlugin from 'src/main';
 import { WorkspaceLeaf } from './lib/obsidian-api';
+import { ApplyView } from 'src/ApplyView';
 
 import { AppProvider } from 'src/contexts/app-context';
 import { McpProvider } from 'src/contexts/mcp-context';
@@ -44,6 +45,30 @@ const App: React.FC = () => {
   const rightSidebarRef = useRef<HTMLDivElement>(null);
   const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
 
+  // We use useCallback to memoize the event handler.
+  // This prevents it from being recreated on every render, and it correctly
+  // captures the 'activeLeaf' dependency.
+  const handleFileModify = useCallback(async (file: TFile) => {
+    if (activeLeaf?.view.file?.path === file.path) {
+      const newContent = await app.vault.read(file);
+      setFileSystem(prevFs => ({
+        ...prevFs,
+        [file.path]: { ...prevFs[file.path], content: newContent },
+      }));
+    }
+  }, [activeLeaf]); // Dependency on activeLeaf ensures we always have the latest value
+
+  useEffect(() => {
+    // We attach the event listener here and provide the memoized handler.
+    app.vault.on('modify', handleFileModify);
+
+    return () => {
+      // Cleanup: remove the listener when the component unmounts or dependencies change.
+      app.vault.off('modify', handleFileModify);
+    };
+  }, [handleFileModify]); // The effect re-runs if the handler function changes.
+
+
   useEffect(() => {
     linkObsidianApiState(() => fileSystemRef.current, setFileSystem);
 
@@ -74,10 +99,14 @@ const App: React.FC = () => {
       };
       app.workspace.on('layout-change', handleLayoutChange);
 
-      const files = app.vault.getFiles();
-      if (files.length > 0) {
-        app.workspace.openLinkText(files[0].path, '');
-      }
+      // The following line was causing a race condition on startup.
+      // It tried to access the '.editor-container' DOM element before it was
+      // rendered by React. Removing it makes the app load into a stable
+      // state, waiting for the user to select a file.
+      // const files = app.vault.getFiles();
+      // if (files.length > 0) {
+      //   app.workspace.openLinkText(files[0].path, '');
+      // }
 
       const pluginManifest = {
         id: 'smart-composer',
@@ -91,6 +120,14 @@ const App: React.FC = () => {
       const newPlugin = new SmartComposerPlugin(app as any, pluginManifest as any);
       await newPlugin.onload();
       
+      // Manually register the ApplyView, since this is normally handled by the
+      // plugin's onload method in the real Obsidian environment. This makes
+      // our mock app aware of the custom view type.
+      app.registerView(
+        'smtcmp-apply-view',
+        (leaf: WorkspaceLeaf) => new ApplyView(leaf)
+      );
+
       // Re-enable tools to allow for file editing
       newPlugin.settings.chatOptions.enableTools = true;
 
@@ -222,10 +259,10 @@ const App: React.FC = () => {
                         fileContent={activeLeaf?.view.file ? fileSystem[activeLeaf.view.file.path]?.content : ''}
                         onContentChange={(newContent) => {
                           if (activeLeaf?.view.file) {
-                            setFileSystem(prevFs => ({
-                              ...prevFs,
-                              [activeLeaf.view.file.path]: { ...prevFs[activeLeaf.view.file.path], content: newContent },
-                            }));
+                            // Instead of directly setting the file system,
+                            // we go through the mock vault API. This allows
+                            // our new event listener to pick up the change.
+                            app.vault.modify(activeLeaf.view.file, newContent);
                           }
                         }}
                       />

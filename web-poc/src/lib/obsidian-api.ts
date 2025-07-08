@@ -786,7 +786,11 @@ class Workspace extends EventEmitter {
             return;
         }
 
-        this.activeLeaf = leaf;
+        // Do NOT set the activeLeaf here. Revealing a leaf in the sidebar
+        // should not steal focus from the main editor pane. This was the
+        // root cause of the "No file is currently open" error.
+        // this.activeLeaf = leaf;
+        
         const rightSidebar = document.querySelector('.right-sidebar');
         if (rightSidebar && !rightSidebar.contains(leaf.containerEl)) {
              // Clear any existing content

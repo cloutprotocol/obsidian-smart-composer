@@ -17,7 +17,7 @@ export class ApplyView extends View {
   private state: ApplyViewState | null = null
 
   constructor(leaf: WorkspaceLeaf) {
-    super(leaf)
+    super(leaf as any)
   }
 
   getViewType() {
