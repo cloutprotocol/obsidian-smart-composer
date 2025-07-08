@@ -804,6 +804,7 @@ export class App {
     public fileManager: any = {};
     public lastEvent: any = null;
     public settingTabs: PluginSettingTab[] = [];
+    public plugin?: Plugin; // Add this line to allow storing the plugin instance
 
     constructor() {
         this.vault = new Vault();

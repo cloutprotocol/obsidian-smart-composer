@@ -8,7 +8,6 @@ import { FileTreeView } from './components/FileTreeView';
 import { MarkdownEditor } from './components/MarkdownEditor';
 import { SettingsModal } from './components/SettingsModal';
 import { app } from './lib/obsidian-api';
-import SmartComposerPlugin from 'src/main';
 import { WorkspaceLeaf } from './lib/obsidian-api';
 
 const App: React.FC = () => {
@@ -38,24 +37,35 @@ const App: React.FC = () => {
       app.workspace.openLinkText(files[0].path, '');
     }
 
-    // --- Plugin Loader ---
-    // This is a simplified plugin loader for the POC.
-    const pluginManifest = {
-      id: 'smart-composer',
-      name: 'Smart Composer',
-      version: '1.0.0',
-      minAppVersion: '1.0.0',
-      description: 'A smart composer plugin.',
-      author: 'POC',
-    };
-    // Cast to `any` to satisfy the constructor's type requirement in this mock environment
-    const plugin = new SmartComposerPlugin(app as any, pluginManifest as any);
-    plugin.onload();
-    // --- End Plugin Loader ---
+    if (import.meta.env.DEV) {
+      // --- Dev-Only Plugin Loader ---
+      // This ensures the plugin's onload/onunload logic runs for local dev,
+      // but is excluded from the production build to avoid errors.
+      import('../../src/main').then(({ default: SmartComposerPlugin }) => {
+        const pluginManifest = {
+          id: 'smart-composer',
+          name: 'Smart Composer',
+          version: '1.0.0',
+          minAppVersion: '1.0.0',
+          description: 'A smart composer plugin.',
+          author: 'POC',
+        };
+        // Cast to `any` to satisfy the constructor's type requirement in this mock environment
+        const plugin = new SmartComposerPlugin(app as any, pluginManifest as any);
+        plugin.onload();
+
+        // Set up cleanup for when the component unmounts
+        app.plugin = plugin;
+      });
+    }
 
     // Clean up on unmount
     return () => {
-      plugin.onunload();
+      if (app.plugin) {
+        app.plugin.onunload();
+      }
+      app.workspace.off('file-open', handleFileOpen);
+      app.workspace.off('active-leaf-change', handleLayoutChange);
     };
   }, []);
 
