@@ -419,6 +419,44 @@ class Vault extends EventEmitter {
         super();
     }
 
+    private getHierarchy(): TFolder {
+        const fs = (globalThis as any).virtualFileSystem as FileSystemState;
+        const root = new TFolder('/', null);
+        const folders = new Map<string, TFolder>([['', root]]);
+
+        const ensureFolder = (path: string): TFolder => {
+            if (folders.has(path)) {
+                return folders.get(path)!;
+            }
+            const parentPath = path.substring(0, path.lastIndexOf('/'));
+            const parentFolder = ensureFolder(parentPath === '' ? '' : parentPath);
+            const folderName = path.substring(path.lastIndexOf('/') + 1);
+            const newFolder = new TFolder(path, parentFolder);
+            newFolder.name = folderName;
+            folders.set(path, newFolder);
+            parentFolder.children.push(newFolder);
+            return newFolder;
+        };
+        
+        // Ensure all directories exist first
+        for (const path in fs) {
+            if (path.includes('/')) {
+                ensureFolder(path.substring(0, path.lastIndexOf('/')));
+            }
+        }
+
+        // Add files to their respective folders
+        for (const path in fs) {
+            const fileData = fs[path];
+            const parentPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
+            const parentFolder = folders.get(parentPath)!;
+            const file = new TFile(path, parentFolder, fileData.mtime || Date.now());
+            parentFolder.children.push(file);
+        }
+
+        return root;
+    }
+
     async read(file: TFile): Promise<string> {
         const fs = (globalThis as any).virtualFileSystem as FileSystemState;
         console.log(`[Mock API] vault.read: ${file.path}`);
@@ -443,6 +481,7 @@ class Vault extends EventEmitter {
             ...prevFs,
             [file.path]: { ...prevFs[file.path], content },
         }));
+        this.emit('modify', this.getHierarchy().children.find(c => c.path === file.path));
     }
 
     async delete(file: TAbstractFile): Promise<void> {
@@ -452,47 +491,52 @@ class Vault extends EventEmitter {
             delete newFs[file.path];
             return newFs;
         });
+        this.emit('delete', file);
     }
 
     getFiles(): TFile[] {
-        const fs = (globalThis as any).virtualFileSystem as FileSystemState;
-        return Object.keys(fs).map(path => {
-            return new TFile(path, null, Date.now());
-        });
+        const files: TFile[] = [];
+        const traverse = (folder: TFolder) => {
+            for (const child of folder.children) {
+                if (child instanceof TFile) {
+                    files.push(child);
+                } else if (child instanceof TFolder) {
+                    traverse(child);
+                }
+            }
+        };
+        traverse(this.getHierarchy());
+        return files;
     }
 
     getAllFolders(): TFolder[] {
-        const fs = (globalThis as any).virtualFileSystem as FileSystemState;
-        const folders = new Map<string, TFolder>();
-        Object.keys(fs).forEach(path => {
-            const parts = path.split('/');
-            let currentPath = '';
-            for (let i = 0; i < parts.length - 1; i++) {
-                const part = parts[i];
-                currentPath = currentPath ? `${currentPath}/${part}` : part;
-                if (!folders.has(currentPath)) {
-                    folders.set(currentPath, new TFolder(currentPath, null));
+        const folders: TFolder[] = [];
+        const traverse = (folder: TFolder) => {
+            folders.push(folder);
+            for (const child of folder.children) {
+                if (child instanceof TFolder) {
+                    traverse(child);
                 }
             }
-        });
-        return Array.from(folders.values());
+        };
+        traverse(this.getHierarchy());
+        return folders;
     }
 
+
     getFileByPath(path: string): TFile | undefined {
-        const fs = (globalThis as any).virtualFileSystem as FileSystemState;
-        if (fs[path]) {
-            return new TFile(path, null, Date.now());
-        }
-        return undefined;
+        return this.getFiles().find(f => f.path === path);
     }
 
     async create(path: string, content: string): Promise<TFile> {
         console.log(`[Mock API] vault.create: ${path}`);
         setVirtualFileSystem(prevFs => ({
             ...prevFs,
-            [path]: { content, mtime: Date.now() } as any, // mtime is not in VirtualFile but helps mock logic
+            [path]: { content, mtime: Date.now() } as any,
         }));
-        return new TFile(path, null, Date.now());
+        const newFile = new TFile(path, null, Date.now()); // Parent is null for now, getHierarchy will fix
+        this.emit('create', newFile);
+        return newFile;
     }
 }
 
@@ -539,26 +583,24 @@ export abstract class ItemView extends View { // Extends the now-defined View
 
 export class Editor {
     getValue(): string {
-        console.warn("[Mock API] Editor.getValue() is not implemented and should be overridden.");
-        return '';
+        // In a real implementation, this would get the editor's content.
+        // For the POC, we can return a placeholder.
+        return (this as any)._value || '';
     }
     setValue(text: string) {
-        console.warn("[Mock API] Editor.setValue() is not implemented and should be overridden.");
+        (this as any)._value = text;
     }
     getSelection(): string {
-        // This is a simplified mock. A real implementation would need
-        // to interact with an actual editor instance (like CodeMirror).
-        console.log("[Mock API] getSelection called");
-        // For the POC, we can return a hardcoded value for testing.
-        return "selected text"; 
+        return ''; // TODO: Implement if needed
     }
     replaceSelection(text: string) {
-        console.log(`[Mock API] Editor.replaceSelection with: "${text}"`);
+        // TODO: Implement if needed
     }
 }
 
 export class MarkdownView extends ItemView {
     editor: Editor;
+    file: TFile | null = null;
 
     constructor(leaf: WorkspaceLeaf) {
         super(leaf);
@@ -573,7 +615,7 @@ export class WorkspaceLeaf {
     public view: any;
     public app: App;
     public containerEl: HTMLElement;
-    private id: string;
+    public id: string;
 
     constructor(appInstance: App, containerEl: HTMLElement) {
         this.app = appInstance;
@@ -610,7 +652,6 @@ export class WorkspaceLeaf {
 }
 
 class Workspace extends EventEmitter {
-    activeFile: TFile | null = null;
     private leaves: WorkspaceLeaf[] = [];
     private app: App;
 
@@ -628,29 +669,78 @@ class Workspace extends EventEmitter {
         this.app = appInstance;
     }
 
-    async openLinkText(linktext: string, sourcePath: string, newLeaf?: boolean): Promise<void> {
-        console.log(`[Mock API] openLinkText called for: ${linktext}`);
-        const targetFile = this.app.vault.getFileByPath(linktext);
+    async openLinkText(linktext: string, sourcePath: string, newLeaf: boolean = false): Promise<void> {
+        console.log(`[Workspace] openLinkText called for: ${linktext}`);
+        const file = this.app.vault.getFileByPath(linktext);
 
-        if (targetFile) {
-            this.activeFile = targetFile;
-            // Get the main editor leaf, creating it if it doesn't exist.
-            const editorLeaf = this.getEditorLeaf();
-            // In a real app, we'd set the view state, but for the POC, just emitting is enough
-            // to update the React UI. The editorLeaf is now the active one.
-            this.activeLeaf = editorLeaf;
-            this.emit('file-open', targetFile);
+        if (file) {
+            // If newLeaf is false, try to find an existing leaf for this file.
+            let leaf = newLeaf ? undefined : this.leaves.find(l => l.view?.file?.path === file.path);
+
+            if (!leaf) {
+                leaf = this.getLeaf(true); // getLeaf will create a new leaf instance
+                leaf.view = new MarkdownView(leaf);
+                leaf.view.file = file;
+            }
+            
+            leaf.view.editor.setValue(await this.app.vault.read(file));
+            this.setActiveLeaf(leaf); // This will set activeLeaf and emit the change event
+            
+            this.emit('file-open', file); // Keep this for legacy or other listeners
         } else {
-            console.warn(`[Mock API] File not found for link: ${linktext}`);
+            console.error(`File not found: ${linktext}`);
         }
     }
 
-    getActiveFile() {
-        return this.activeFile;
+    getActiveFile(): TFile | null {
+        // This is now the single source of truth for the active file, derived
+        // from the active leaf's view. This resolves the core state bug.
+        if (this.activeLeaf && this.activeLeaf.view instanceof MarkdownView) {
+            return this.activeLeaf.view.file;
+        }
+        return null;
     }
 
     getLeavesOfType(viewType: string) {
-        return this.leaves.filter(leaf => leaf.view?.getViewType() === viewType);
+        return this.leaves.filter(leaf => leaf.view.getViewType() === viewType);
+    }
+
+    // This method is now more generic to get a leaf, optionally creating one.
+    getLeaf(create: boolean = false): WorkspaceLeaf {
+        // In this mock, we'll just create a new leaf if requested.
+        // A real implementation would have more complex logic for splitting, etc.
+        if (create) {
+            const editorContainer = document.querySelector('.editor-container');
+            if (editorContainer) {
+                const leafContainer = document.createElement('div');
+                leafContainer.classList.add('workspace-leaf-content');
+                // Note: We don't append it here because the React UI will manage the DOM rendering
+                const newLeaf = new WorkspaceLeaf(this.app, leafContainer as HTMLElement);
+                this.leaves.push(newLeaf);
+                return newLeaf;
+            } else {
+                throw new Error("Could not find '.editor-container' to create a leaf.");
+            }
+        }
+        return this.activeLeaf ?? this.leaves[0];
+    }
+    
+    setActiveLeaf(leaf: WorkspaceLeaf) {
+        if (this.activeLeaf !== leaf) {
+            this.activeLeaf = leaf;
+            this.emit('active-leaf-change', leaf);
+        }
+    }
+
+    detachLeaf(leaf: WorkspaceLeaf) {
+        const index = this.leaves.findIndex(l => l === leaf);
+        if (index > -1) {
+            this.leaves.splice(index, 1);
+            if (this.activeLeaf === leaf) {
+                this.activeLeaf = this.leaves[0] || null;
+                this.emit('active-leaf-change', this.activeLeaf);
+            }
+        }
     }
 
     getRightLeaf(create: boolean): WorkspaceLeaf | null {
@@ -676,47 +766,11 @@ class Workspace extends EventEmitter {
         return rightLeaf || null;
     }
 
-    // This is a new method for the POC to get the main editor leaf
-    getEditorLeaf(): WorkspaceLeaf {
-        let editorLeaf = this.leaves.find(leaf => leaf.containerEl.parentElement?.classList.contains('editor-container'));
-
-        if (!editorLeaf) {
-            const editorContainer = document.querySelector('.editor-container');
-            if (editorContainer) {
-                const leafContainer = document.createElement('div');
-                leafContainer.classList.add('workspace-leaf-content');
-                editorContainer.appendChild(leafContainer);
-                editorLeaf = new WorkspaceLeaf(this.app, leafContainer as HTMLElement);
-                this.leaves.push(editorLeaf);
-                this.activeLeaf = editorLeaf;
-            } else {
-                throw new Error("Could not find '.editor-container' to create a leaf.");
-            }
-        }
-        return editorLeaf;
-    }
-
-
     getActiveViewOfType<T extends ItemView>(type: new (...args: any[]) => T): T | null {
         // This is a simplified mock. It finds the first view of the given type.
-        for (const leaf of this.leaves) {
-            if (leaf.view instanceof type) {
-                this.activeLeaf = leaf; // Set the leaf as active since its view is being requested
-                return leaf.view as T;
-            }
+        if (this.activeLeaf && this.activeLeaf.view instanceof type) {
+            return this.activeLeaf.view as T;
         }
-        
-        // If no view is found, let's create one in the main editor leaf,
-        // which is a common behavior in Obsidian.
-        if (type.name === 'MarkdownView') {
-            const editorLeaf = this.getEditorLeaf();
-            if (!(editorLeaf.view instanceof MarkdownView)) {
-                 editorLeaf.view = new MarkdownView(editorLeaf);
-            }
-            this.activeLeaf = editorLeaf;
-            return editorLeaf.view as T;
-        }
-
         return null;
     }
 
@@ -742,7 +796,7 @@ class Workspace extends EventEmitter {
             console.log("[Mock API] Appending leaf container to right sidebar.");
             rightSidebar.appendChild(leaf.containerEl);
         }
-        this.emit('active-leaf-change', leaf);
+        this.emit('layout-change', leaf);
     }
 }
 

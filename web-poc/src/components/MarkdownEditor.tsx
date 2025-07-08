@@ -15,7 +15,7 @@ interface MarkdownEditorProps {
 }
 
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile, fileContent, onContentChange }) => {
-  const [wordWrap, setWordWrap] = useState(false);
+  const [wordWrap, setWordWrap] = useState(true);
 
   // This memoized value provides the necessary CodeMirror extension to enable/disable line wrapping.
   // Using the editor's native API is more robust than CSS overrides.
@@ -32,17 +32,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile, file
 
   return (
     <div className="editor-container">
-      <div className="editor-header">
-        <h3>{activeFile}</h3>
-        <div className="toggle-container">
-          <span>wrap</span>
-          {/* This label wraps a hidden checkbox and a span to create the custom toggle switch */}
-          <label className="toggle-switch">
-            <input type="checkbox" checked={wordWrap} onChange={() => setWordWrap(!wordWrap)} />
-            <span className="slider"></span>
-          </label>
-        </div>
-      </div>
       <Markdown
         value={fileContent}
         onChange={onContentChange}

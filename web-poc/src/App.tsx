@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FileTreeView } from './components/FileTreeView';
 import { MarkdownEditor } from './components/MarkdownEditor';
 import { SettingsModal } from './components/SettingsModal';
-import { app, linkObsidianApiState, Command, Editor } from './lib/obsidian-api';
+import { app, linkObsidianApiState, Command, Editor, MarkdownView, TFile } from './lib/obsidian-api';
 import SmartComposerPlugin from 'src/main';
 import { WorkspaceLeaf } from './lib/obsidian-api';
 
@@ -20,16 +20,20 @@ import { DialogContainerProvider } from 'src/contexts/dialog-container-context';
 
 export interface VirtualFile {
   content: string;
+  mtime?: number;
 }
 export type FileSystemState = Record<string, VirtualFile>; // filename -> file object
 
 const App: React.FC = () => {
   const [plugin, setPlugin] = useState<SmartComposerPlugin | null>(null);
   const pluginRef = useRef<SmartComposerPlugin | null>(null);
-  const [activeFile, setActiveFile] = useState<string | null>('Welcome.md');
+  const [openLeaves, setOpenLeaves] = useState<WorkspaceLeaf[]>([]);
+  const [activeLeaf, setActiveLeaf] = useState<WorkspaceLeaf | null>(null);
+
   const [fileSystem, setFileSystem] = useState<FileSystemState>({
     'Welcome.md': { content: '# Welcome\n\nThis is a sample file.' },
     'Another-File.md': { content: '# Another File\n\nSome content here.' },
+    'folder/Note-In-Folder.md': { content: '# Another File\n\nSome content here.' },
   });
   const fileSystemRef = useRef(fileSystem);
   fileSystemRef.current = fileSystem;
@@ -44,12 +48,20 @@ const App: React.FC = () => {
     linkObsidianApiState(() => fileSystemRef.current, setFileSystem);
 
     const initPlugin = async () => {
-      const handleFileOpen = (file: { path: string } | null) => {
-        if (file) {
-          setActiveFile(file.path);
+      
+      const handleActiveLeafChange = (leaf: WorkspaceLeaf | null) => {
+        if (leaf) {
+          setOpenLeaves(prevOpenLeaves => {
+            // Use functional update to prevent stale state
+            if (prevOpenLeaves.find(l => l.id === leaf.id)) {
+              return prevOpenLeaves; // If leaf already exists, do nothing
+            }
+            return [...prevOpenLeaves, leaf]; // Otherwise, add it
+          });
         }
+        setActiveLeaf(leaf);
       };
-      app.workspace.on('file-open', handleFileOpen);
+      app.workspace.on('active-leaf-change', handleActiveLeafChange);
 
       const handleLayoutChange = (leaf: WorkspaceLeaf & { view: { containerEl: HTMLElement }}) => {
           const isChatView = leaf.getViewState().type === 'smtcmp-chat-view';
@@ -60,10 +72,10 @@ const App: React.FC = () => {
             setRightSidebarContent(null);
           }
       };
-      app.workspace.on('active-leaf-change', handleLayoutChange);
+      app.workspace.on('layout-change', handleLayoutChange);
 
       const files = app.vault.getFiles();
-      if (files.length > 0 && !activeFile) {
+      if (files.length > 0) {
         app.workspace.openLinkText(files[0].path, '');
       }
 
@@ -107,23 +119,28 @@ const App: React.FC = () => {
     app.workspace.openLinkText(path, '');
   };
 
+  const handleCloseTab = (leafToClose: WorkspaceLeaf) => {
+    app.workspace.detachLeaf(leafToClose);
+    setOpenLeaves(prevLeaves => prevLeaves.filter(l => l !== leafToClose));
+  };
+
   const executeCommand = (command: Command) => {
     if (command.callback) {
       command.callback();
     } else if (command.editorCallback) {
-      const view = app.workspace.getActiveViewOfType('MarkdownView');
+      const view = app.workspace.getActiveViewOfType(MarkdownView);
       if (view) {
         // We need to provide the editor with the *current* content
         // This is a bit of a hack, as the original editor instance
         // won't have the updated content if it was changed by another process (like the AI)
-        const activeFileContent = activeFile ? fileSystem[activeFile]?.content : '';
+        const activeFileContent = activeLeaf?.view.file ? fileSystem[activeLeaf.view.file.path]?.content : '';
         const mockEditor: Editor = {
           getValue: () => activeFileContent,
           setValue: (content: string) => {
-            if (activeFile) {
+            if (activeLeaf?.view.file) {
               setFileSystem(prevFs => ({
                 ...prevFs,
-                [activeFile]: { ...prevFs[activeFile], content },
+                [activeLeaf.view.file.path]: { ...prevFs[activeLeaf.view.file.path], content },
               }));
             }
           },
@@ -180,20 +197,34 @@ const App: React.FC = () => {
                   />
                   <div className="sidebar">
                     <FileTreeView
-                      files={Object.keys(fileSystem)}
                       onFileSelect={handleFileSelect}
                     />
                   </div>
                   <div className="main-content">
                     <div className="editor-container">
+                      <div className="tab-container">
+                        {openLeaves.map(leaf => (
+                          <div
+                            key={leaf.id}
+                            className={`tab-item ${activeLeaf === leaf ? 'is-active' : ''}`}
+                            onClick={() => app.workspace.setActiveLeaf(leaf)}
+                          >
+                            <span>{leaf.view.file.name}</span>
+                            <button className="close-tab-button" onClick={(e) => {
+                              e.stopPropagation();
+                              handleCloseTab(leaf);
+                            }}>x</button>
+                          </div>
+                        ))}
+                      </div>
                       <MarkdownEditor
-                        activeFile={activeFile}
-                        fileContent={activeFile ? fileSystem[activeFile]?.content : ''}
+                        activeFile={activeLeaf?.view.file?.path}
+                        fileContent={activeLeaf?.view.file ? fileSystem[activeLeaf.view.file.path]?.content : ''}
                         onContentChange={(newContent) => {
-                          if (activeFile) {
+                          if (activeLeaf?.view.file) {
                             setFileSystem(prevFs => ({
                               ...prevFs,
-                              [activeFile]: { ...prevFs[activeFile], content: newContent },
+                              [activeLeaf.view.file.path]: { ...prevFs[activeLeaf.view.file.path], content: newContent },
                             }));
                           }
                         }}

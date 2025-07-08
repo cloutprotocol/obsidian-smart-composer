@@ -71,6 +71,53 @@ body {
   flex-direction: column;
 }
 
+/* Tab Container Styles */
+.tab-container {
+  display: flex;
+  background-color: var(--background-primary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0; /* Prevent tabs from shrinking */
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  padding: var(--size-4-2) var(--size-4-3);
+  background-color: var(--background-secondary);
+  border-right: 1px solid var(--background-modifier-border);
+  cursor: pointer;
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+  position: relative; /* For positioning the close button */
+}
+
+.tab-item:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.tab-item.is-active {
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  border-bottom-color: transparent;
+}
+
+.close-tab-button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  margin-left: var(--size-4-2);
+  padding: 0 var(--size-4-1);
+  cursor: pointer;
+  border-radius: var(--radius-s);
+}
+
+.close-tab-button:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+
 .right-sidebar {
   width: 400px;
   min-width: 400px;
