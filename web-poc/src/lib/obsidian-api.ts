@@ -182,10 +182,12 @@ export class TFile extends TAbstractFile {
     stat: {
         mtime: number; // Last modified time
     };
+    extension: string;
 
     constructor(path: string, parent: TFolder | null, mtime: number) {
         super(path, parent);
         this.stat = { mtime };
+        this.extension = path.split('.').pop() ?? '';
     }
 }
 
@@ -322,6 +324,15 @@ class Vault extends EventEmitter {
         traverse(fileSystem, '/', root, files, folders);
         // Exclude the artifical root folder from the final result
         return folders.filter(f => f.path !== '/');
+    }
+
+    /**
+     * Finds a TFile object by its path.
+     * @param path The path of the file to find.
+     * @returns The TFile object, or undefined if not found.
+     */
+    getFileByPath(path: string): TFile | undefined {
+        return this.getFiles().find(file => file.path === path);
     }
 
     async create(path: string, content: string): Promise<TFile> {
@@ -489,12 +500,10 @@ class Workspace extends EventEmitter {
     }
 
     getActiveFile() {
-        console.log("[Mock API] getActiveFile called");
         return this.activeFile;
     }
 
     getLeavesOfType(viewType: string) {
-        console.log(`[Mock API] getLeavesOfType called for: ${viewType}`);
         return this.leaves.filter(leaf => leaf.view?.getViewType() === viewType);
     }
 
