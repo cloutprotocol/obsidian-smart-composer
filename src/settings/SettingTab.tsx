@@ -34,8 +34,14 @@ export class SmartComposerSettingTab extends PluginSettingTab {
 
   hide(): void {
     if (this.root) {
-      this.root.unmount()
-      this.root = null
+      // Defer the unmount to avoid a race condition where React tries to
+      // unmount a component tree while it's still in the middle of a render.
+      // This is a common issue when integrating React with non-React libraries
+      // or in environments like Obsidian's settings tabs.
+      setTimeout(() => {
+        this.root?.unmount()
+        this.root = null
+      }, 0)
     }
   }
 }

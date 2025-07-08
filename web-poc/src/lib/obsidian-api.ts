@@ -12,12 +12,15 @@ import { EventEmitter } from 'eventemitter3';
 type DomElementInfo = {
   cls?: string;
   text?: string;
+  type?: string;
 };
 
 declare global {
   interface HTMLElement {
     empty(): void;
     createEl<K extends keyof HTMLElementTagNameMap>(tag: K, o?: DomElementInfo | string, cb?: (el: HTMLElementTagNameMap[K]) => void): HTMLElementTagNameMap[K];
+    createDiv(o?: DomElementInfo | string, cb?: (el: HTMLDivElement) => void): HTMLDivElement;
+    setAttrs(attrs: Record<string, string>): void;
   }
 }
 
@@ -40,6 +43,7 @@ HTMLElement.prototype.createEl = function<K extends keyof HTMLElementTagNameMap>
     } else {
       if (o.cls) el.className = o.cls;
       if (o.text) el.textContent = o.text;
+      if (o.type && el instanceof HTMLInputElement) el.type = o.type;
     }
   }
   if (cb) {
@@ -47,6 +51,19 @@ HTMLElement.prototype.createEl = function<K extends keyof HTMLElementTagNameMap>
   }
   this.appendChild(el);
   return el;
+};
+
+HTMLElement.prototype.createDiv = function (
+  o?: DomElementInfo | string,
+  cb?: (el: HTMLDivElement) => void
+): HTMLDivElement {
+  return this.createEl('div', o, cb);
+};
+
+HTMLElement.prototype.setAttrs = function (attrs: Record<string, string>): void {
+  for (const key in attrs) {
+    this.setAttribute(key, attrs[key]);
+  }
 };
 
 
@@ -102,51 +119,160 @@ export const Platform = {
 
 export class Keymap {} // Added missing Keymap export
 
-class BaseComponent {
-    el: HTMLElement;
-    constructor() {
-        this.el = document.createElement('div');
+export class ButtonComponent {
+    public buttonEl: HTMLButtonElement;
+    constructor(containerEl: HTMLElement) {
+        this.buttonEl = containerEl.createEl('button');
+    }
+    setButtonText(text: string) { this.buttonEl.textContent = text; return this; }
+    setIcon(icon: string) { /* In POC, we can ignore icons or use text */ return this; }
+    setTooltip(tooltip: string) { this.buttonEl.title = tooltip; return this; }
+    setCta() { this.buttonEl.classList.add('mod-cta'); return this; }
+    setWarning() { this.buttonEl.classList.add('mod-warning'); return this; }
+    setDisabled(disabled: boolean) { this.buttonEl.disabled = disabled; return this; }
+    onClick(cb: () => void) { this.buttonEl.addEventListener('click', cb); }
+}
+
+export class TextComponent {
+    public inputEl: HTMLInputElement;
+    constructor(containerEl: HTMLElement) {
+        this.inputEl = containerEl.createEl('input', { cls: 'setting-input', type: 'text' });
+    }
+    setValue(value: string) { this.inputEl.value = value; return this; }
+    onChange(cb: (value: string) => void) { this.inputEl.addEventListener('input', (e) => cb((e.target as HTMLInputElement).value)); }
+    setPlaceholder(placeholder: string) { this.inputEl.placeholder = placeholder; return this; }
+}
+
+export class TextAreaComponent {
+    public inputEl: HTMLTextAreaElement;
+    constructor(containerEl: HTMLElement) {
+        this.inputEl = containerEl.createEl('textarea', { cls: 'setting-textarea' });
+    }
+    setValue(value: string) { this.inputEl.value = value; return this; }
+    onChange(cb: (value: string) => void) { this.inputEl.addEventListener('input', (e) => cb((e.target as HTMLTextAreaElement).value)); }
+    setPlaceholder(placeholder: string) { this.inputEl.placeholder = placeholder; return this; }
+}
+
+export class DropdownComponent extends Component {
+    selectEl: HTMLSelectElement;
+
+    constructor(containerEl: HTMLElement) {
+        super();
+        // The original mock was empty. This was fleshed out to create a real
+        // <select> element, because the React components that use this class
+        // (`ObsidianDropdown`) expect `selectEl` to be a valid DOM element
+        // they can manipulate and attach event listeners to.
+        this.selectEl = containerEl.createEl('select', 'dropdown');
+    }
+    addOption(value: string, display: string) {
+        this.selectEl.add(new Option(display, value));
+        return this;
+    }
+    // This method was missing from the mock. It's used by `ObsidianDropdown`
+    // to populate the select options dynamically.
+    addOptions(options: Record<string, string>) {
+        for(const value in options) {
+            this.addOption(value, options[value]);
+        }
+        return this;
+    }
+    onChange(cb: (value: string) => void) {
+        this.selectEl.addEventListener('change', (e) => cb((e.target as HTMLSelectElement).value));
+        return this;
+    }
+    getValue() {
+        return this.selectEl.value;
+    }
+    setValue(value: string) {
+        this.selectEl.value = value;
+        return this;
     }
 }
 
-export class ButtonComponent extends BaseComponent {
-    setButtonText(text: string) { this.el.textContent = text; return this; }
-    onClick(cb: () => void) { this.el.onclick = cb; return this; }
-}
+export class ToggleComponent extends Component {
+    toggleEl: HTMLElement;
+    private inputEl: HTMLInputElement;
 
-export class DropdownComponent extends BaseComponent {
-    addOption(value: string, display: string) { return this; }
-    onChange(cb: (value: string) => void) { return this; }
-    getValue() { return ''; }
-}
-
-export class TextComponent extends BaseComponent {
-    setValue(value: string) { return this; }
-    onChange(cb: (value: string) => void) { return this; }
-}
-
-export class TextAreaComponent extends BaseComponent {
-    setValue(value: string) { return this; }
-    onChange(cb: (value: string) => void) { return this; }
-}
-
-export class ToggleComponent extends BaseComponent {
-    setValue(value: boolean) { return this; }
-    onChange(cb: (value: boolean) => void) { return this; }
+    constructor(containerEl: HTMLElement) {
+        super();
+        // This component was also empty. It's now implemented to create a
+        // real checkbox-based toggle. The `ObsidianToggle` React component
+        // relies on the `toggleEl` property for cleanup and management.
+        this.toggleEl = containerEl.createEl('div', { cls: 'setting-toggle' });
+        this.inputEl = this.toggleEl.createEl('input', {type: 'checkbox'});
+    }
+    setValue(value: boolean) {
+        this.inputEl.checked = value;
+        return this;
+    }
+    onChange(cb: (value: boolean) => void) {
+        this.inputEl.addEventListener('change', (e) => cb((e.target as HTMLInputElement).checked));
+        return this;
+    }
 }
 
 export class Setting {
+    settingEl: HTMLElement;
+    infoEl: HTMLElement;
+    nameEl: HTMLElement;
+    descEl: HTMLElement;
     controlEl: HTMLElement;
+
     constructor(containerEl: HTMLElement) {
-        this.controlEl = containerEl.createDiv();
+        // The original mock `Setting` class was too simplistic and caused a crash
+        // because it didn't create the expected DOM structure. Specifically, the
+        // `ObsidianSetting` React component directly accesses `settingEl` and `nameEl`.
+        // This constructor now builds a DOM structure that mirrors the real Obsidian
+        // API, preventing null reference errors. It also uses `createDiv`, a
+        // polyfill we added to HTMLElement.
+        this.settingEl = containerEl.createDiv({ cls: 'setting-item' });
+        this.infoEl = this.settingEl.createDiv({ cls: 'setting-item-info' });
+        this.nameEl = this.infoEl.createDiv({ cls: 'setting-item-name' });
+        this.descEl = this.infoEl.createDiv({ cls: 'setting-item-description' });
+        this.controlEl = this.settingEl.createDiv({ cls: 'setting-item-control' });
     }
-    setName(name: string) { return this; }
-    setDesc(desc: string) { return this; }
-    addButton(cb: (button: ButtonComponent) => void) { return this; }
-    addDropdown(cb: (dropdown: DropdownComponent) => void) { return this; }
-    addToggle(cb: (toggle: ToggleComponent) => void) { return this; }
-    addText(cb: (text: TextComponent) => void) { return this; }
-    addTextArea(cb: (text: TextAreaComponent) => void) { return this; }
+    setName(name: string) {
+        this.nameEl.textContent = name;
+        return this;
+    }
+    setDesc(desc: string) {
+        this.descEl.textContent = desc;
+        return this;
+    }
+    setHeading() {
+      this.settingEl.classList.add('setting-item-heading');
+      return this;
+    }
+    // The `clear` method was missing. `ObsidianSetting` calls this on unmount
+    // to clean up the setting's DOM elements, preventing memory leaks.
+    clear() {
+        this.settingEl.remove();
+    }
+    addButton(cb: (button: ButtonComponent) => void) {
+        const button = new ButtonComponent(this.controlEl);
+        cb(button);
+        return this;
+    }
+    addDropdown(cb: (dropdown: DropdownComponent) => void) {
+        const dropdown = new DropdownComponent(this.controlEl);
+        cb(dropdown);
+        return this;
+    }
+    addToggle(cb: (toggle: ToggleComponent) => void) {
+        const toggle = new ToggleComponent(this.controlEl);
+        cb(toggle);
+        return this;
+    }
+    addText(cb: (text: TextComponent) => void) {
+        const text = new TextComponent(this.controlEl);
+        cb(text);
+        return this;
+    }
+    addTextArea(cb: (text: TextAreaComponent) => void) {
+        const text = new TextAreaComponent(this.controlEl);
+        cb(text);
+        return this;
+    }
 }
 
 export class Modal {
@@ -165,11 +291,27 @@ export class Modal {
 export abstract class PluginSettingTab {
     app: App;
     plugin: Plugin;
+    id: string;
+    name: string;
+    containerEl: HTMLElement;
+
     constructor(app: App, plugin: Plugin) {
         this.app = app;
         this.plugin = plugin;
+        this.id = plugin.manifest.id;
+        // The tab's name is initialized from the plugin's manifest. This provides a
+        // sensible default. The actual `SettingTab` class for the plugin then
+        // overwrites this with a more specific name in its own constructor.
+        // This was changed from `''` to fix a bug where tab titles were missing.
+        this.name = plugin.manifest.name; // Name is set by the plugin
+        // The real container is provided by the settings modal when display() is called.
+        // We initialize it here to satisfy the type.
+        this.containerEl = document.createElement('div');
     }
     abstract display(): void;
+    hide() {
+        // In a real implementation, this would contain logic to hide the setting tab's contents.
+    }
 }
 
 // --- Hierarchical File System Abstractions ---
@@ -660,6 +802,7 @@ export class App {
     };
     public fileManager: any = {};
     public lastEvent: any = null;
+    public settingTabs: PluginSettingTab[] = [];
 
     constructor() {
         this.vault = new Vault();
@@ -680,33 +823,30 @@ export class App {
         }
     }
 
-    getCommands() {
+    getCommands(): any[] {
         return this.commands;
     }
 
     addSettingTab(tab: PluginSettingTab) {
-        // For POC, we can just log this. A real implementation would render the tab.
-        console.log(`[Mock API] Setting tab added:`, tab);
+        const tabExists = this.settingTabs.some(
+            (existingTab) => existingTab.id === tab.id && existingTab.name === tab.name,
+        );
+
+        if (!tabExists) {
+            this.settingTabs.push(tab);
+        }
+        // In a real app, this would also handle displaying it in the settings UI.
+        console.log(`[Mock API] Setting tab added: ${tab.constructor.name}`);
     }
 
     addRibbonIcon(icon: string, title: string, callback: () => void): HTMLElement {
-        console.log(`Adding ribbon icon: ${title}`);
-        // For POC, create a button and append it to a dedicated ribbon container.
-        const ribbonBar = document.getElementById('ribbon-bar'); // Assuming this exists in the POC's HTML
-        if (!ribbonBar) {
-            console.error("Ribbon bar element not found!");
-            return document.createElement('div'); // Return a dummy element
-        }
-
-        const iconEl = document.createElement('button');
-        iconEl.className = 'ribbon-icon';
-        iconEl.setAttribute('aria-label', title);
-        iconEl.innerHTML = `<span>${icon}</span>`; // Using text for icon for simplicity
-        iconEl.onclick = callback;
-        
-        ribbonBar.appendChild(iconEl);
-
-        return iconEl;
+        console.log(`[Mock API] addRibbonIcon: ${title}`);
+        const ribbonButton = document.createElement('div');
+        ribbonButton.className = 'ribbon-icon';
+        ribbonButton.innerHTML = `<i>${icon}</i>`;
+        ribbonButton.onclick = callback;
+        // In a real app, this would be added to the ribbon
+        return ribbonButton;
     }
 }
 

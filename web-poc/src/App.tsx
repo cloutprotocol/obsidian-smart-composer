@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileTreeView } from './components/FileTreeView';
 import { MarkdownEditor } from './components/MarkdownEditor';
+import { SettingsModal } from './components/SettingsModal';
 import { app } from './lib/obsidian-api';
 import SmartComposerPlugin from 'src/main';
 import { WorkspaceLeaf } from './lib/obsidian-api';
@@ -14,6 +15,7 @@ const App: React.FC = () => {
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [isRightSidebarVisible, setRightSidebarVisible] = useState(false);
+  const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
 
   useEffect(() => {
     const handleFileOpen = (file: { path: string } | null) => {
@@ -51,10 +53,10 @@ const App: React.FC = () => {
     plugin.onload();
     // --- End Plugin Loader ---
 
+    // Clean up on unmount
     return () => {
-        app.workspace.off('file-open', handleFileOpen);
-        app.workspace.off('active-leaf-change', handleLayoutChange);
-    }
+      plugin.onunload();
+    };
   }, []);
 
 
@@ -82,6 +84,9 @@ const App: React.FC = () => {
         <button onClick={() => setShowCommandPalette(!showCommandPalette)}>
           Cmds
         </button>
+        <button onClick={() => setSettingsModalOpen(true)}>
+          ⚙️
+        </button>
       </div>
       {showCommandPalette && (
         <div className="command-palette">
@@ -94,6 +99,10 @@ const App: React.FC = () => {
           </ul>
         </div>
       )}
+      <SettingsModal 
+        isOpen={isSettingsModalOpen} 
+        onClose={() => setSettingsModalOpen(false)} 
+      />
       <div className="sidebar">
         <FileTreeView onFileSelect={handleFileSelect} />
       </div>

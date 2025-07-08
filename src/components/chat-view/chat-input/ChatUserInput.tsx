@@ -319,12 +319,16 @@ function MentionableContentPreview({
     queryFn: async () => {
       if (!displayedMentionable) return '';
       if (
-        displayedMentionable.type === 'file' ||
-        displayedMentionable.type === 'current-file'
+        (displayedMentionable.type === 'file' ||
+          displayedMentionable.type === 'current-file') &&
+        displayedMentionable.file
       ) {
-        return readTFileContent(displayedMentionable.file);
+        return readTFileContent(displayedMentionable.file, app.vault);
       }
-      return displayedMentionable.content;
+      if (displayedMentionable.type === 'block') {
+        return displayedMentionable.content;
+      }
+      return '';
     },
     enabled: !!displayedMentionable,
   });
@@ -337,22 +341,11 @@ function MentionableContentPreview({
         'Loading...'
       ) : displayedMentionable.type === 'image' ? (
         <img
-          src={displayedMentionable.dataUri}
-          alt={displayedMentionable.fileName}
+          src={`data:${displayedMentionable.mimeType};base64,${displayedMentionable.data}`}
+          alt={displayedMentionable.name}
         />
       ) : (
-        <ObsidianMarkdown
-          app={app}
-          content={content ?? ''}
-          sourcePath={
-            (displayedMentionable.type === 'file' ||
-              displayedMentionable.type === 'block' ||
-              displayedMentionable.type === 'current-file') &&
-            displayedMentionable.file
-              ? displayedMentionable.file.path
-              : undefined
-          }
-        />
+        <ObsidianMarkdown content={content ?? ''} />
       )}
     </div>
   );
