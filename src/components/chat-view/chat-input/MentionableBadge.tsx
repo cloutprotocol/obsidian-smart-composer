@@ -1,8 +1,8 @@
-import clsx from 'clsx'
-import { Eye, EyeOff, X } from 'lucide-react'
-import { PropsWithChildren, useCallback } from 'react'
+import clsx from 'clsx';
+import { Eye, EyeOff, X } from 'lucide-react';
+import { PropsWithChildren } from 'react';
 
-import { useSettings } from '../../../contexts/settings-context'
+import { useSettings } from '../../../contexts/settings-context';
 import {
   Mentionable,
   MentionableBlock,
@@ -12,163 +12,140 @@ import {
   MentionableImage,
   MentionableUrl,
   MentionableVault,
-} from '../../../types/mentionable'
+} from '../../../types/mentionable';
 
-import { getMentionableIcon } from './utils/get-metionable-icon'
+import { getMentionableIcon } from './utils/get-metionable-icon';
+
+export type BadgeStyleProps = {
+  className?: string;
+  deleteClassName?: string;
+  previewClassName?: string;
+  nameClassName?: string;
+  nameIconClassName?: string;
+  nameSuffixClassName?: string;
+  currentClassName?: string;
+  excludedContentClassName?: string;
+};
 
 function BadgeBase({
   children,
   onDelete,
   onClick,
-  isFocused,
+  className,
+  deleteClassName,
 }: PropsWithChildren<{
-  onDelete: () => void
-  onClick: () => void
-  isFocused: boolean
+  onDelete: () => void;
+  onClick: () => void;
+  className?: string;
+  deleteClassName?: string;
 }>) {
   return (
-    <div
-      className={`smtcmp-chat-user-input-file-badge ${isFocused ? 'smtcmp-chat-user-input-file-badge-focused' : ''}`}
-      onClick={onClick}
-    >
+    <div className={className} onClick={onClick}>
       {children}
       <div
-        className="smtcmp-chat-user-input-file-badge-delete"
+        className={deleteClassName}
         onClick={(evt) => {
-          evt.stopPropagation()
-          onDelete()
+          evt.stopPropagation();
+          onDelete();
         }}
       >
         <X size={12} />
       </div>
     </div>
-  )
+  );
 }
 
-function FileBadge({
-  mentionable,
-  onDelete,
-  onClick,
-  isFocused,
-}: {
-  mentionable: MentionableFile
-  onDelete: () => void
-  onClick: () => void
-  isFocused: boolean
-}) {
-  const Icon = getMentionableIcon(mentionable)
+type BadgeProps<T extends Mentionable> = {
+  mentionable: T;
+  onDelete: () => void;
+  onClick: () => void;
+  isFocused: boolean;
+} & BadgeStyleProps;
+
+function FileBadge({ mentionable, onDelete, onClick, ...rest }: BadgeProps<MentionableFile>) {
+  const Icon = getMentionableIcon(mentionable);
   return (
-    <BadgeBase onDelete={onDelete} onClick={onClick} isFocused={isFocused}>
-      <div className="smtcmp-chat-user-input-file-badge-name">
-        {Icon && (
-          <Icon
-            size={12}
-            className="smtcmp-chat-user-input-file-badge-name-icon"
-          />
-        )}
+    <BadgeBase
+      onDelete={onDelete}
+      onClick={onClick}
+      className={rest.className}
+      deleteClassName={rest.deleteClassName}
+    >
+      <div className={rest.nameClassName}>
+        {Icon && <Icon size={12} className={rest.nameIconClassName} />}
         <span>{mentionable.file.name}</span>
       </div>
     </BadgeBase>
-  )
+  );
 }
 
-function FolderBadge({
-  mentionable,
-  onDelete,
-  onClick,
-  isFocused,
-}: {
-  mentionable: MentionableFolder
-  onDelete: () => void
-  onClick: () => void
-  isFocused: boolean
-}) {
-  const Icon = getMentionableIcon(mentionable)
+function FolderBadge({ mentionable, onDelete, onClick, ...rest }: BadgeProps<MentionableFolder>) {
+  const Icon = getMentionableIcon(mentionable);
   return (
-    <BadgeBase onDelete={onDelete} onClick={onClick} isFocused={isFocused}>
-      <div className="smtcmp-chat-user-input-file-badge-name">
-        {Icon && (
-          <Icon
-            size={12}
-            className="smtcmp-chat-user-input-file-badge-name-icon"
-          />
-        )}
+    <BadgeBase
+      onDelete={onDelete}
+      onClick={onClick}
+      className={rest.className}
+      deleteClassName={rest.deleteClassName}
+    >
+      <div className={rest.nameClassName}>
+        {Icon && <Icon size={12} className={rest.nameIconClassName} />}
         <span>{mentionable.folder.name}</span>
       </div>
     </BadgeBase>
-  )
+  );
 }
 
-function VaultBadge({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  mentionable,
-  onDelete,
-  onClick,
-  isFocused,
-}: {
-  mentionable: MentionableVault
-  onDelete: () => void
-  onClick: () => void
-  isFocused: boolean
-}) {
-  const Icon = getMentionableIcon(mentionable)
+function VaultBadge({ onDelete, onClick, ...rest }: BadgeProps<MentionableVault>) {
+  const Icon = getMentionableIcon(rest.mentionable);
   return (
-    <BadgeBase onDelete={onDelete} onClick={onClick} isFocused={isFocused}>
-      <div className="smtcmp-chat-user-input-file-badge-name">
-        {Icon && (
-          <Icon
-            size={12}
-            className="smtcmp-chat-user-input-file-badge-name-icon"
-          />
-        )}
+    <BadgeBase
+      onDelete={onDelete}
+      onClick={onClick}
+      className={rest.className}
+      deleteClassName={rest.deleteClassName}
+    >
+      <div className={rest.nameClassName}>
+        {Icon && <Icon size={12} className={rest.nameIconClassName} />}
         <span>Vault</span>
       </div>
     </BadgeBase>
-  )
+  );
 }
 
 function CurrentFileBadge({
   mentionable,
   onDelete,
   onClick,
-  isFocused,
-}: {
-  mentionable: MentionableCurrentFile
-  onDelete: () => void
-  onClick: () => void
-  isFocused: boolean
-}) {
-  const { settings, setSettings } = useSettings()
+  ...rest
+}: BadgeProps<MentionableCurrentFile>) {
+  const { settings, setSettings } = useSettings();
 
-  const handleCurrentFileToggle = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      e.stopPropagation()
-      setSettings({
-        ...settings,
-        chatOptions: {
-          ...settings.chatOptions,
-          includeCurrentFileContent:
-            !settings.chatOptions.includeCurrentFileContent,
-        },
-      })
-    },
-    [settings, setSettings],
-  )
+  const handleCurrentFileToggle = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    setSettings({
+      ...settings,
+      chatOptions: {
+        ...settings.chatOptions,
+        includeCurrentFileContent: !settings.chatOptions.includeCurrentFileContent,
+      },
+    });
+  };
 
-  const Icon = getMentionableIcon(mentionable)
+  const Icon = getMentionableIcon(mentionable);
   return mentionable.file ? (
-    <BadgeBase onDelete={onDelete} onClick={onClick} isFocused={isFocused}>
-      <div className="smtcmp-chat-user-input-file-badge-name">
-        {Icon && (
-          <Icon
-            size={12}
-            className="smtcmp-chat-user-input-file-badge-name-icon"
-          />
-        )}
+    <BadgeBase
+      onDelete={onDelete}
+      onClick={onClick}
+      className={rest.className}
+      deleteClassName={rest.deleteClassName}
+    >
+      <div className={rest.nameClassName}>
+        {Icon && <Icon size={12} className={rest.nameIconClassName} />}
         <span
           className={clsx(
             !settings.chatOptions.includeCurrentFileContent &&
-              'smtcmp-excluded-content',
+              rest.excludedContentClassName,
           )}
         >
           {mentionable.file.name}
@@ -176,17 +153,14 @@ function CurrentFileBadge({
       </div>
       <div
         className={clsx(
-          'smtcmp-chat-user-input-file-badge-name-suffix',
+          rest.nameSuffixClassName,
           !settings.chatOptions.includeCurrentFileContent &&
-            'smtcmp-excluded-content',
+            rest.excludedContentClassName,
         )}
       >
         {' (Current File)'}
       </div>
-      <div
-        className="smtcmp-chat-user-input-file-badge-eye"
-        onClick={handleCurrentFileToggle}
-      >
+      <div className={rest.previewClassName} onClick={handleCurrentFileToggle}>
         {settings.chatOptions.includeCurrentFileContent ? (
           <Eye size={12} />
         ) : (
@@ -194,167 +168,80 @@ function CurrentFileBadge({
         )}
       </div>
     </BadgeBase>
-  ) : null
+  ) : null;
 }
 
-function BlockBadge({
-  mentionable,
-  onDelete,
-  onClick,
-  isFocused,
-}: {
-  mentionable: MentionableBlock
-  onDelete: () => void
-  onClick: () => void
-  isFocused: boolean
-}) {
-  const Icon = getMentionableIcon(mentionable)
+function BlockBadge({ mentionable, onDelete, onClick, ...rest }: BadgeProps<MentionableBlock>) {
+  const Icon = getMentionableIcon(mentionable);
   return (
-    <BadgeBase onDelete={onDelete} onClick={onClick} isFocused={isFocused}>
-      <div className="smtcmp-chat-user-input-file-badge-name">
-        {Icon && (
-          <Icon
-            size={12}
-            className="smtcmp-chat-user-input-file-badge-name-icon"
-          />
-        )}
+    <BadgeBase
+      onDelete={onDelete}
+      onClick={onClick}
+      className={rest.className}
+      deleteClassName={rest.deleteClassName}
+    >
+      <div className={rest.nameClassName}>
+        {Icon && <Icon size={12} className={rest.nameIconClassName} />}
         <span>{mentionable.file.name}</span>
       </div>
-      <div className="smtcmp-chat-user-input-file-badge-name-suffix">
+      <div className={rest.nameSuffixClassName}>
         {` (${mentionable.startLine}:${mentionable.endLine})`}
       </div>
     </BadgeBase>
-  )
+  );
 }
 
-function UrlBadge({
-  mentionable,
-  onDelete,
-  onClick,
-  isFocused,
-}: {
-  mentionable: MentionableUrl
-  onDelete: () => void
-  onClick: () => void
-  isFocused: boolean
-}) {
-  const Icon = getMentionableIcon(mentionable)
+function UrlBadge({ mentionable, onDelete, onClick, ...rest }: BadgeProps<MentionableUrl>) {
+  const Icon = getMentionableIcon(mentionable);
   return (
-    <BadgeBase onDelete={onDelete} onClick={onClick} isFocused={isFocused}>
-      <div className="smtcmp-chat-user-input-file-badge-name">
-        {Icon && (
-          <Icon
-            size={12}
-            className="smtcmp-chat-user-input-file-badge-name-icon"
-          />
-        )}
+    <BadgeBase
+      onDelete={onDelete}
+      onClick={onClick}
+      className={rest.className}
+      deleteClassName={rest.deleteClassName}
+    >
+      <div className={rest.nameClassName}>
+        {Icon && <Icon size={12} className={rest.nameIconClassName} />}
         <span>{mentionable.url}</span>
       </div>
     </BadgeBase>
-  )
+  );
 }
 
-function ImageBadge({
-  mentionable,
-  onDelete,
-  onClick,
-  isFocused,
-}: {
-  mentionable: MentionableImage
-  onDelete: () => void
-  onClick: () => void
-  isFocused: boolean
-}) {
-  const Icon = getMentionableIcon(mentionable)
+function ImageBadge({ mentionable, onDelete, onClick, ...rest }: BadgeProps<MentionableImage>) {
+  const Icon = getMentionableIcon(mentionable);
   return (
-    <BadgeBase onDelete={onDelete} onClick={onClick} isFocused={isFocused}>
-      <div className="smtcmp-chat-user-input-file-badge-name">
-        {Icon && (
-          <Icon
-            size={12}
-            className="smtcmp-chat-user-input-file-badge-name-icon"
-          />
-        )}
-        <span>{mentionable.name}</span>
+    <BadgeBase
+      onDelete={onDelete}
+      onClick={onClick}
+      className={rest.className}
+      deleteClassName={rest.deleteClassName}
+    >
+      <div className={rest.nameClassName}>
+        {Icon && <Icon size={12} className={rest.nameIconClassName} />}
+        <span>{mentionable.fileName}</span>
       </div>
     </BadgeBase>
-  )
+  );
 }
 
-export default function MentionableBadge({
-  mentionable,
-  onDelete,
-  onClick,
-  isFocused = false,
-}: {
-  mentionable: Mentionable
-  onDelete: () => void
-  onClick: () => void
-  isFocused?: boolean
-}) {
-  switch (mentionable.type) {
+export default function MentionableBadge(props: BadgeProps<Mentionable>) {
+  switch (props.mentionable.type) {
     case 'file':
-      return (
-        <FileBadge
-          mentionable={mentionable}
-          onDelete={onDelete}
-          onClick={onClick}
-          isFocused={isFocused}
-        />
-      )
+      return <FileBadge {...(props as BadgeProps<MentionableFile>)} />;
     case 'folder':
-      return (
-        <FolderBadge
-          mentionable={mentionable}
-          onDelete={onDelete}
-          onClick={onClick}
-          isFocused={isFocused}
-        />
-      )
+      return <FolderBadge {...(props as BadgeProps<MentionableFolder>)} />;
     case 'vault':
-      return (
-        <VaultBadge
-          mentionable={mentionable}
-          onDelete={onDelete}
-          onClick={onClick}
-          isFocused={isFocused}
-        />
-      )
+      return <VaultBadge {...(props as BadgeProps<MentionableVault>)} />;
     case 'current-file':
-      return (
-        <CurrentFileBadge
-          mentionable={mentionable}
-          onDelete={onDelete}
-          onClick={onClick}
-          isFocused={isFocused}
-        />
-      )
+      return <CurrentFileBadge {...(props as BadgeProps<MentionableCurrentFile>)} />;
     case 'block':
-      return (
-        <BlockBadge
-          mentionable={mentionable}
-          onDelete={onDelete}
-          onClick={onClick}
-          isFocused={isFocused}
-        />
-      )
+      return <BlockBadge {...(props as BadgeProps<MentionableBlock>)} />;
     case 'url':
-      return (
-        <UrlBadge
-          mentionable={mentionable}
-          onDelete={onDelete}
-          onClick={onClick}
-          isFocused={isFocused}
-        />
-      )
+      return <UrlBadge {...(props as BadgeProps<MentionableUrl>)} />;
     case 'image':
-      return (
-        <ImageBadge
-          mentionable={mentionable}
-          onDelete={onDelete}
-          onClick={onClick}
-          isFocused={isFocused}
-        />
-      )
+      return <ImageBadge {...(props as BadgeProps<MentionableImage>)} />;
+    default:
+      return null;
   }
 }

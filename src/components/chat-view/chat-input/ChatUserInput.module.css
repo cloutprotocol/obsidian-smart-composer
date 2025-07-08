@@ -1,0 +1,172 @@
+.chatUserInputContainer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #2a2a2a; /* var(--background-modifier-form-field) */
+  border: 1px solid #444; /* var(--input-border-width) solid var(--background-modifier-border) */
+  color: #d4d4d4; /* var(--text-normal) */
+  font-family: inherit;
+  padding: 0.5rem; /* calc(var(--size-2-3) + 1px) */
+  font-size: 0.875rem; /* var(--font-ui-small) */
+  border-radius: 4px; /* var(--radius-s) */
+  outline: none;
+}
+
+.chatUserInputContainer:focus-within,
+.chatUserInputContainer:focus,
+.chatUserInputContainer:focus-visible,
+.chatUserInputContainer:active {
+  box-shadow: 0 0 0 2px #0a84ff; /* var(--background-modifier-border-focus) */
+  transition: box-shadow 0.15s ease-in-out;
+}
+
+.chatUserInputFiles {
+  display: flex;
+  flex-direction: row;
+  gap: 0.25rem; /* var(--size-4-1) */
+  flex-wrap: wrap;
+  padding-bottom: 0.25rem; /* var(--size-4-1) */
+}
+
+.chatUserInputControls {
+  display: flex;
+  flex-direction: row;
+  gap: 0.25rem; /* var(--size-4-1) */
+  justify-content: space-between;
+  align-items: center;
+  height: 1.5rem; /* var(--size-4-4) */
+}
+
+.modelSelectContainer {
+  flex-shrink: 1;
+  overflow: hidden;
+}
+
+.buttons {
+  flex-shrink: 0;
+  display: flex;
+  gap: 0.5rem; /* var(--size-4-2) */
+  align-items: center;
+}
+
+.submitButton {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem; /* var(--size-4-1) */
+  font-size: 0.75rem; /* var(--font-smallest) */
+  color: #999; /* var(--text-muted) */
+  padding: 0 0.25rem; /* var(--size-2-1) */
+  cursor: pointer;
+  transition: all 0.1s ease-in-out;
+}
+
+.submitButton:hover {
+  color: #d4d4d4; /* var(--text-normal) */
+}
+
+.submitButtonIcons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.fileBadge {
+  display: flex;
+  align-items: center;
+  background-color: #333; /* var(--background-secondary) */
+  border: 1px solid #444; /* var(--background-modifier-border) */
+  border-radius: 4px; /* var(--radius-s) */
+  font-size: 0.75rem; /* var(--font-smallest) */
+  padding: 0.25rem 0.5rem; /* var(--size-2-1) var(--size-4-1) */
+  gap: 0.25rem; /* var(--size-2-1) */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fileBadgeFocused {
+  border: 1px solid #0a84ff; /* var(--interactive-accent) */
+}
+
+.excludedContent {
+  text-decoration: line-through;
+  font-style: italic;
+}
+
+.fileBadge svg {
+  flex-shrink: 0;
+}
+
+.fileBadge:hover {
+  background-color: #3a3a3a; /* var(--background-modifier-hover) */
+}
+
+.deleteButton {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  color: #999; /* var(--text-muted) */
+}
+
+.previewButton {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  margin: 0 0.25rem 0 0.5rem; /* var(--size-2-1) var(--size-4-1) */
+}
+
+.badgeName {
+  display: flex;
+  flex-direction: row;
+  gap: 0.25rem; /* var(--size-2-1) */
+  flex-grow: 1;
+  overflow: hidden;
+  align-items: center;
+}
+
+.badgeNameIcon {
+  color: #999; /* var(--text-muted) */
+}
+
+.badgeName span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badgeNameSuffix {
+  color: #777; /* var(--text-faint) */
+  flex-grow: 0;
+}
+
+.badgeCurrent {
+  color: #ccc; /* var(--color-base-50) */
+}
+
+.contentPreview {
+  background-color: #333; /* var(--background-secondary) */
+  border-radius: 4px; /* var(--radius-s) */
+  border: 1px solid #444; /* var(--background-modifier-border) */
+  max-height: 350px;
+  overflow-y: auto;
+  padding: 0 0.5rem; /* var(--size-4-2) */
+}
+
+.contentPreview img {
+  max-width: 100%;
+  max-height: 350px;
+}
+
+.lexicalRoot .mention {
+  background-color: #4a4a4a; /* var(--tag-background) */
+  color: #d4d4d4; /* var(--tag-color) */
+  padding: 0.25rem; /* var(--size-2-1) */
+  border-radius: 4px; /* var(--radius-s) */
+  word-break: break-all;
+}
+
+.lexicalParagraph {
+  margin: 0;
+  line-height: 1.6;
+} 

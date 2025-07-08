@@ -60,14 +60,20 @@ export default function LexicalContentEditable({
   initialEditorState,
   autoFocus = false,
   plugins,
-}: LexicalContentEditableProps) {
+  className,
+  paragraphClassName,
+}: LexicalContentEditableProps & {
+  className?: string;
+  paragraphClassName?: string;
+}) {
   const app = useApp()
 
   const initialConfig: InitialConfigType = {
     namespace: 'LexicalContentEditable',
     theme: {
-      root: 'smtcmp-lexical-content-editable-root',
-      paragraph: 'smtcmp-lexical-content-editable-paragraph',
+      root: className ?? 'smtcmp-lexical-content-editable-root',
+      paragraph:
+        paragraphClassName ?? 'smtcmp-lexical-content-editable-paragraph',
     },
     nodes: [MentionNode],
     editorState: initialEditorState,
