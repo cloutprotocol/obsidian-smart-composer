@@ -30,6 +30,12 @@ export const FileTreeView: React.FC<FileTreeViewProps> = ({ onFileSelect }) => {
   const handleAddFile = () => {
     const fileName = prompt('Enter file name (e.g., new-note.md):');
     if (fileName) {
+      // Check if a file with this name already exists
+      const fileExists = files.some(f => f.name === fileName);
+      if (fileExists) {
+        alert(`A file named "${fileName}" already exists.`);
+        return;
+      }
       app.vault.create(fileName, `# ${fileName}\n\n`);
     }
   };
@@ -41,11 +47,12 @@ export const FileTreeView: React.FC<FileTreeViewProps> = ({ onFileSelect }) => {
     const testFilePath = 'TestNote.md';
     const testFileContent = '# Test Note\n\nThis is a test.';
     try {
-      await app.vault.create(testFilePath, testFileContent);
+      // After creating, we should get a TFile object back
+      const createdFile = await app.vault.create(testFilePath, testFileContent);
       console.log(`✅ SUCCESS: app.vault.create('${testFilePath}')`);
       
-      // Test: Read the created file
-      const content = await app.vault.read(testFilePath);
+      // Test: Read the created file using the TFile object
+      const content = await app.vault.read(createdFile);
       if (content === testFileContent) {
         console.log(`✅ SUCCESS: app.vault.read('${testFilePath}')`);
       } else {
@@ -54,8 +61,8 @@ export const FileTreeView: React.FC<FileTreeViewProps> = ({ onFileSelect }) => {
   
       // Test: Write to the file
       const updatedContent = `${testFileContent}\n\nAppended text.`;
-      await app.vault.write(testFilePath, updatedContent);
-      const newContent = await app.vault.read(testFilePath);
+      await app.vault.write(createdFile, updatedContent);
+      const newContent = await app.vault.read(createdFile);
       if (newContent === updatedContent) {
           console.log(`✅ SUCCESS: app.vault.write('${testFilePath}')`);
       } else {
@@ -63,7 +70,7 @@ export const FileTreeView: React.FC<FileTreeViewProps> = ({ onFileSelect }) => {
       }
   
       // Test: Delete the file
-      await app.vault.delete(testFilePath);
+      await app.vault.delete(createdFile);
       const files = app.vault.getFiles();
       if (!files.some(f => f.path === testFilePath)) {
           console.log(`✅ SUCCESS: app.vault.delete('${testFilePath}')`);

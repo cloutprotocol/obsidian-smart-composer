@@ -26,8 +26,17 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile }) =>
   }, [wordWrap]);
 
   useEffect(() => {
+    // This effect now safely handles file loading.
+    // It will only attempt to read a file if `activeFile` is a valid path string.
     if (activeFile) {
-      app.vault.read(activeFile).then(setContent);
+      const file = app.vault.getFileByPath(activeFile);
+      // It further ensures that the file object exists before trying to read.
+      if (file) {
+        app.vault.read(file).then(setContent);
+      } else {
+        // If the file can't be found (e.g., it was deleted), clear the content.
+        setContent('');
+      }
     } else {
       setContent('');
     }
@@ -36,7 +45,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile }) =>
   const handleContentChange = (value: string) => {
     setContent(value);
     if (activeFile) {
-      app.vault.write(activeFile, value);
+      // Like reading, writing is also protected by getting the TFile object first.
+      const file = app.vault.getFileByPath(activeFile);
+      if (file) {
+        app.vault.write(file, value);
+      }
     }
   };
 
