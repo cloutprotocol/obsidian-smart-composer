@@ -184,6 +184,21 @@ const App: React.FC = () => {
     setOpenLeaves(prevLeaves => prevLeaves.filter(l => l !== leafToClose));
   };
 
+  const handleOpenWelcomeAndChat = () => {
+    handleFileSelect('welcome.md');
+    // We need to wait for the leaf to be created and the view to be active
+    // because openChatView depends on the active view. A timeout is used here
+    // as a pragmatic way to ensure that the file selection has been processed
+    // and the new leaf is active before we attempt to open the chat view.
+    // In a real application, a more robust solution might involve listening for
+    // a specific workspace event, but this is sufficient for the POC.
+    setTimeout(() => {
+      if (pluginRef.current) {
+        pluginRef.current.openChatView();
+      }
+    }, 100); // A small delay to ensure the workspace has updated
+  };
+
   const executeCommand = (command: Command) => {
     if (command.callback) {
       command.callback();
@@ -317,7 +332,7 @@ const App: React.FC = () => {
                                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 6 4 4-4 4"/><path d="m6 18-4-4 4-4"/><path d="m14.5 4-5 16"/></svg>
                                   <span>Open file</span>
                                 </button>
-                                <button onClick={() => handleFileSelect('welcome.md')}>
+                                <button onClick={handleOpenWelcomeAndChat}>
                                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15.5 2H8.6c-.4 0-.8.2-1.1.5-.3.3-.5.7-.5 1.1V21c0 .6.4 1 1 1h12c.6 0 1-.4 1-1V8.5L15.5 2z"/><path d="M15 2v5h5"/></svg>
                                   <span>welcome.md</span>
                                 </button>
