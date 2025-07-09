@@ -694,13 +694,13 @@ const Chat = forwardRef<ChatRef, ChatProps>((props, ref) => {
             </button>
           </div>
         )}
-        {submitChatMutation.isPending && (
-          <button onClick={abortActiveStreams} className="smtcmp-stop-gen-btn">
-            <CircleStop size={16} />
-            <div>Stop Generation</div>
-          </button>
-        )}
       </div>
+      {submitChatMutation.isPending && (
+        <button onClick={abortActiveStreams} className="smtcmp-stop-gen-btn">
+          <CircleStop size={14} />
+          <div>crash</div>
+        </button>
+      )}
       <ChatUserInput
         key={inputMessage.id} // this is needed to clear the editor when the user submits a new message
         ref={(ref) => registerChatUserInputRef(inputMessage.id, ref)}

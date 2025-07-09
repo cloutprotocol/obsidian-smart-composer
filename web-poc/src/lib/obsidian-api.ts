@@ -687,6 +687,15 @@ export class WorkspaceLeaf {
 
 class Workspace extends EventEmitter {
     private leaves: WorkspaceLeaf[] = [];
+    /**
+     * Simple focus-history stack.
+     *
+     * NOTE: This is a pragmatic substitute for Obsidian’s real split-tree
+     * focus management.  When we later port the full split layout logic, this
+     * stack can be removed and we can rely on each split remembering its own
+     * active child (see `Workspace.split` in Obsidian core).
+     */
+    private leafHistory: WorkspaceLeaf[] = [];
     private app: App;
 
     // Add missing properties to satisfy the obsidian.Workspace interface
@@ -762,19 +771,43 @@ class Workspace extends EventEmitter {
     
     setActiveLeaf(leaf: WorkspaceLeaf) {
         if (this.activeLeaf !== leaf) {
+            // Push the previous leaf so `detachLeaf` can restore it if the
+            // current one is closed.  We consciously allow duplicates; they
+            // are filtered when popping.
+            if (this.activeLeaf) {
+                this.leafHistory.push(this.activeLeaf);
+            }
             this.activeLeaf = leaf;
             this.emit('active-leaf-change', leaf);
         }
     }
 
     detachLeaf(leaf: WorkspaceLeaf) {
-        const index = this.leaves.findIndex(l => l === leaf);
-        if (index > -1) {
-            this.leaves.splice(index, 1);
-            if (this.activeLeaf === leaf) {
-                this.activeLeaf = this.leaves[0] || null;
-                this.emit('active-leaf-change', this.activeLeaf);
+        const index = this.leaves.findIndex((l) => l === leaf);
+        if (index === -1) return;
+
+        // Remove from the master list
+        this.leaves.splice(index, 1);
+
+        // Also purge any stale references from the history stack
+        this.leafHistory = this.leafHistory.filter((h) => h !== leaf);
+
+        if (this.activeLeaf === leaf) {
+            // Pop history until we find a leaf that is still present in
+            // `this.leaves` (guards against stale references).
+            let restored: WorkspaceLeaf | undefined;
+            while (this.leafHistory.length && !restored) {
+                const candidate = this.leafHistory.pop();
+                if (candidate && this.leaves.includes(candidate)) {
+                    restored = candidate;
+                }
             }
+
+            // Fallback: first remaining leaf (behaviour identical to the
+            // original naive implementation).  If no leaves remain we set
+            // `activeLeaf = null`.
+            this.activeLeaf = restored ?? this.leaves[0] ?? null;
+            this.emit('active-leaf-change', this.activeLeaf);
         }
     }
 
