@@ -19,8 +19,18 @@ export type ParsedTagContent =
  * Parses text containing <smtcmp_block> and <think> tags into structured content
  */
 export function parseTagContents(input: string): ParsedTagContent[] {
+  // 1️⃣  Pre-process fallback syntax – convert fenced blocks whose info string
+  //     looks like a markdown filename into the canonical <smtcmp_block> form.
+  //     Example: ```another-file.md \n .... \n``` ➜ <smtcmp_block filename="another-file.md" language="markdown">…</smtcmp_block>
+  //     This preserves backward compatibility while letting the Apply button
+  //     appear without requiring model compliance on every turn.
+
+  const preProcessed = input.replace(/```\s*([\w./-]+\.md)\s*\n([\s\S]*?)```/g, (_, filename: string, content: string) => {
+    return `<smtcmp_block filename="${filename.trim()}" language="markdown">\n${content.trim()}\n</smtcmp_block>`
+  })
+
   const parsedResult: ParsedTagContent[] = []
-  const fragment = parseFragment(input, {
+  const fragment = parseFragment(preProcessed, {
     sourceCodeLocationInfo: true,
   })
   let lastEndOffset = 0
