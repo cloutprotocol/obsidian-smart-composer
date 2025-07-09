@@ -337,15 +337,22 @@ input[type='text'].smtcmp-chat-list-dropdown-item-title-input {
 
   .smtcmp-code-block-header-button {
     height: 100%;
-    padding: 0 var(--size-4-2);
+    padding: 4px 10px;
     display: flex;
+    align-items: center;
     gap: var(--size-4-1);
     font-size: var(--font-small);
   }
 
   /* Override clickable-icon color */
   .smtcmp-code-block-header-button.clickable-icon {
-    color: var(--text-color) !important;
+    color: var(--text-normal) !important;
+  }
+
+  .smtcmp-code-block-header-button.clickable-icon svg {
+    stroke: currentColor;
+    margin-right:3px;
+    margin-top:1px;
   }
 }
 
@@ -579,12 +586,13 @@ button.smtcmp-chat-input-model-select {
 }
 
 .smtcmp-tooltip-content {
-  background-color: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
+  background-color: var(--color-background-primary);
+  border: 1px solid var(--color-background-modifier-border);
   border-radius: var(--radius-s);
   padding: var(--size-4-1) var(--size-4-2);
   font-size: var(--font-smallest);
   animation: fadeIn 0.1s ease-in-out;
+  padding:0px 4px;
 }
 
 @keyframes fadeIn {
@@ -1567,4 +1575,18 @@ button.smtcmp-chat-input-model-select {
   display: flex;
   align-items: center;
   gap: var(--size-4-1);
+}
+
+/* improve this toolbar and the bookmark widgets */
+
+.menu {
+  background-color: var(--color-background-secondary);
+  border: 1px solid var(--color-background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: var(--spacing-1);
+}
+
+.menu-item.is-selected {
+  background-color: var(--color-interactive-accent-translucent);
+  color: var(--color-text-accent);
 }
