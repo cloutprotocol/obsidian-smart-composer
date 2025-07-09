@@ -8,6 +8,7 @@ import { app } from '../lib/obsidian-api';
 import Markdown from "@uiw/react-markdown-editor";
 import { EditorView } from "@codemirror/view";
 import { useTheme } from '../contexts/theme-context';
+import { smartComposerDark, smartComposerLight } from '../lib/editor-theme';
 
 interface MarkdownEditorProps {
   activeFile: string | null;
@@ -31,6 +32,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile, file
     }
   };
 
+  const editorTheme = useMemo(() => {
+    return theme === 'dark' ? smartComposerDark : smartComposerLight;
+  }, [theme]);
+
   const [wordWrap, setWordWrap] = useState(true);
 
   // This memoized value provides the necessary CodeMirror extension to enable/disable line wrapping.
@@ -53,7 +58,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ activeFile, file
         onChange={handleContentChange}
         height="calc(100vh - 40px)"
         extensions={extensions}
-        theme={theme}
+        theme={editorTheme}
+        autoFocus={false}
         />
     </div>
   );
