@@ -165,12 +165,28 @@ export const applyChangesToFile = async ({
 }
 
 const extractApplyResponseContent = (response: string) => {
-  const lines = response.split('\n')
-  if (lines[0].startsWith('```')) {
-    lines.shift()
+  // 1️⃣  Fast-path: grab the first fenced block if present
+  const fenceStart = response.indexOf('```')
+  const fenceEnd = response.lastIndexOf('```')
+  let content = response
+  if (fenceStart !== -1 && fenceEnd !== -1 && fenceEnd > fenceStart) {
+    content = response.slice(fenceStart + 3, fenceEnd)
   }
-  if (lines[lines.length - 1].startsWith('```')) {
+
+  const lines = content.split('\n')
+
+  // 2️⃣  Drop a leading filename / language line (e.g., "Another.md" or "markdown")
+  if (lines.length > 0 && lines[0].trim() !== '' && !lines[0].includes('|')) {
+    const first = lines[0].trim()
+    if (first.endsWith('.md') || /^[a-zA-Z]+$/.test(first)) {
+      lines.shift()
+    }
+  }
+
+  // 3️⃣  Remove trailing blank line if any
+  if (lines.length > 0 && lines[lines.length - 1].trim() === '') {
     lines.pop()
   }
+
   return lines.join('\n')
 }
