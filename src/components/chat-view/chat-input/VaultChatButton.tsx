@@ -6,6 +6,7 @@ import {
   CornerDownLeftIcon,
 } from 'lucide-react'
 import { Platform } from 'obsidian'
+import styles from './ChatUserInput.module.css'
 
 export function VaultChatButton({ onClick }: { onClick: () => void }) {
   return (
@@ -14,10 +15,10 @@ export function VaultChatButton({ onClick }: { onClick: () => void }) {
         <Tooltip.Root>
           <Tooltip.Trigger asChild>
             <div
-              className="smtcmp-chat-user-input-submit-button"
+              className={styles.submitButton}
               onClick={onClick}
             >
-              <div className="smtcmp-chat-user-input-submit-button-icons">
+              <div className={styles.submitButtonIcons}>
                 {Platform.isMacOS ? (
                   <Command size={10} />
                 ) : (

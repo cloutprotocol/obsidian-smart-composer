@@ -60,6 +60,17 @@
    Global Styles
    ========================================================================== */
 
+/* --- Disable all default browser highlights --- */
+::selection {
+  background-color: transparent;
+}
+
+*:focus,
+*:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 body {
   margin: 0;
   font-family: var(--font-family);

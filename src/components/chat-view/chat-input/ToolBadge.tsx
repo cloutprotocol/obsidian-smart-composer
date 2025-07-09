@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { Eye, EyeOff, Wrench } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import styles from './ChatUserInput.module.css'
 
 import { useApp } from '../../../contexts/app-context'
 import { useMcp } from '../../../contexts/mcp-context'
@@ -67,24 +68,24 @@ export default function ToolBadge() {
 
   return (
     <div
-      className="smtcmp-chat-user-input-file-badge"
+      className={styles.fileBadge}
       onClick={handleBadgeClick}
     >
-      <div className="smtcmp-chat-user-input-file-badge-name">
+      <div className={styles.badgeName}>
         <Wrench
           size={12}
-          className="smtcmp-chat-user-input-file-badge-name-icon"
+          className={styles.badgeNameIcon}
         />
         <span
           className={clsx(
-            !settings.chatOptions.enableTools && 'smtcmp-excluded-content',
+            !settings.chatOptions.enableTools && styles.excludedContent,
           )}
         >
           Tools ({toolCount})
         </span>
       </div>
       <div
-        className="smtcmp-chat-user-input-file-badge-eye"
+        className={styles.previewButton}
         onClick={handleToolToggle}
       >
         {settings.chatOptions.enableTools ? (

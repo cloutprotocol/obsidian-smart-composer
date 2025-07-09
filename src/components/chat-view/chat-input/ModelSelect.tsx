@@ -3,19 +3,22 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
 
 import { useSettings } from '../../../contexts/settings-context'
+import styles from './ChatUserInput.module.css'
 
 export function ModelSelect() {
   const { settings, setSettings } = useSettings()
   const [isOpen, setIsOpen] = useState(false)
   return (
     <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenu.Trigger className="smtcmp-chat-input-model-select">
-        <div className="smtcmp-chat-input-model-select__model-name">
-          {settings.chatModelId}
-        </div>
-        <div className="smtcmp-chat-input-model-select__icon">
-          {isOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-        </div>
+      <DropdownMenu.Trigger asChild>
+        <button className={styles.modelSelect}>
+          <div className={styles.modelSelectName}>
+            {settings.chatModelId}
+          </div>
+          <div className={styles.modelSelectIcon}>
+            {isOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+          </div>
+        </button>
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Portal>

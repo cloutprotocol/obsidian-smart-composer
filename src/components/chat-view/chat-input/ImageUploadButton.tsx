@@ -1,4 +1,5 @@
 import { ImageIcon } from 'lucide-react'
+import styles from './ChatUserInput.module.css'
 
 export function ImageUploadButton({
   onUpload,
@@ -13,7 +14,7 @@ export function ImageUploadButton({
   }
 
   return (
-    <label className="smtcmp-chat-user-input-submit-button">
+    <label className={styles.submitButton}>
       <input
         type="file"
         accept="image/*"
@@ -21,7 +22,7 @@ export function ImageUploadButton({
         onChange={handleFileChange}
         style={{ display: 'none' }}
       />
-      <div className="smtcmp-chat-user-input-submit-button-icons">
+      <div className={styles.submitButtonIcons}>
         <ImageIcon size={12} />
       </div>
       <div>Image</div>

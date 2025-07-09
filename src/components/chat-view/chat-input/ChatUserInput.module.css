@@ -9,16 +9,15 @@
   padding: 0.5rem; /* calc(var(--size-2-3) + 1px) */
   font-size: 0.875rem; /* var(--font-ui-small) */
   border-radius: 4px; /* var(--radius-s) */
-  outline: none;
+  outline: none !important;
 }
 
 .chatUserInputContainer:focus-within,
 .chatUserInputContainer:focus,
 .chatUserInputContainer:focus-visible,
 .chatUserInputContainer:active {
-  border-color: var(--color-interactive-accent);
-  box-shadow: 0 0 0 1px var(--color-interactive-accent);
-  transition: box-shadow 0.15s ease-in-out;
+  border-color: var(--color-background-modifier-border);
+  box-shadow: none;
 }
 
 .chatUserInputFiles {
@@ -35,12 +34,18 @@
   gap: 0.25rem; /* var(--size-4-1) */
   justify-content: space-between;
   align-items: center;
-  height: 1.5rem; /* var(--size-4-4) */
+  background-color: rgba(0, 0, 0, 0.046);
+  padding:2px;
+  border-radius:2px;
+  margin-top:4px;
+  color:white;
 }
 
 .modelSelectContainer {
   flex-shrink: 1;
   overflow: hidden;
+  max-height: 100%;
+  margin-top:2px;
 }
 
 .buttons {
@@ -172,4 +177,35 @@
 .lexicalParagraph {
   margin: 0;
   line-height: 1.6;
-} 
+}
+
+/* --- Added for ModelSelect --- */
+.modelSelect {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  padding: 0 0.25rem;
+  cursor: pointer;
+  transition: all 0.1s ease-in-out;
+  background: none;
+  border: none;
+  max-height: 24px; /* Constrain height */
+}
+
+.modelSelect:hover {
+  color: var(--color-text-normal);
+}
+
+.modelSelectName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modelSelectIcon {
+  flex-shrink: 0;
+  display: flex; /* Ensure icon is centered */
+  align-items: center;
+}
