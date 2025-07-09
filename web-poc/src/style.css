@@ -517,3 +517,48 @@ select:focus {
   border-color: var(--color-interactive-accent);
   box-shadow: 0 0 0 1px var(--color-interactive-accent);
 }
+
+.no-file-open {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  text-align: center;
+  color: white;
+}
+
+.no-file-open h2 {
+  font-size: 2em;
+  font-weight: bold;
+  margin-bottom: 2rem;
+}
+
+.no-file-open-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.no-file-open-actions button {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  color: #c4b5fd;
+  cursor: pointer;
+  font-size: 1.1em;
+  padding: 0.5rem 1rem;
+  margin: 0.5rem 0;
+}
+
+.no-file-open-actions button:hover {
+  text-decoration: underline;
+}
+
+.no-file-open-actions button svg {
+  margin-right: 1rem;
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}

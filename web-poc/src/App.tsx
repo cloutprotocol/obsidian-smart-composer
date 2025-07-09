@@ -21,6 +21,11 @@ import { SettingsProvider } from 'src/contexts/settings-context';
 import { DialogContainerProvider } from 'src/contexts/dialog-container-context';
 import { ThemeProvider } from './contexts/theme-context';
 
+const INITIAL_FILES: FileSystemState = {
+  'welcome.md': { content: '# Welcome\n\nThis is a sample file.' },
+  'folder/crashos.md': { content: '# crashOS\n\nKeep it cool, man.' },
+};
+
 export interface VirtualFile {
   content: string;
   mtime?: number;
@@ -33,17 +38,35 @@ const App: React.FC = () => {
   const [openLeaves, setOpenLeaves] = useState<WorkspaceLeaf[]>([]);
   const [activeLeaf, setActiveLeaf] = useState<WorkspaceLeaf | null>(null);
 
-  const [fileSystem, setFileSystem] = useState<FileSystemState>({
-    'Welcome.md': { content: '# Welcome\n\nThis is a sample file.' },
-    'Another-File.md': { content: '# Another File\n\nSome content here.' },
-    'folder/Note-In-Folder.md': { content: '# Another File\n\nSome content here.' },
-  });
+  const [fileSystem, setFileSystem] = useState<FileSystemState>(INITIAL_FILES);
 
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [isRightSidebarVisible, setRightSidebarVisible] = useState(false);
   const [rightSidebarContent, setRightSidebarContent] = useState<HTMLElement | null>(null);
   const rightSidebarRef = useRef<HTMLDivElement>(null);
   const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
+
+  const handleCreateNewFile = () => {
+    const fileName = prompt("Enter new file name (e.g., my-note.md):");
+    if (fileName) {
+      if (!fileName.endsWith('.md')) {
+        alert('File name must end with .md');
+        return;
+      }
+      if (fileSystem[fileName]) {
+        alert('File already exists!');
+        return;
+      }
+      const newContent = `# ${fileName.replace(/\.md$/, '')}\n\n`;
+      const newFile = { content: newContent };
+      
+      const updatedFs = { ...fileSystem, [fileName]: newFile };
+      setFileSystem(updatedFs);
+      initializeFileSystem(updatedFs);
+
+      app.workspace.openLinkText(fileName, '');
+    }
+  };
 
   // We use useCallback to memoize the event handler.
   // This prevents it from being recreated on every render, and it correctly
@@ -69,11 +92,7 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
-    initializeFileSystem({
-      'Welcome.md': { content: '# Welcome\n\nThis is a sample file.' },
-      'Another-File.md': { content: '# Another File\n\nSome content here.' },
-      'folder/Note-In-Folder.md': { content: '# Another File\n\nSome content here.' },
-    });
+    initializeFileSystem(INITIAL_FILES);
 
     const initPlugin = async () => {
       
@@ -288,8 +307,21 @@ const App: React.FC = () => {
                           />
                         ) : (
                           <div className="no-file-open">
-                            <p>No file is open.</p>
-                            <p>Select a file from the list to get started.</p>
+                            <h2>No file is open</h2>
+                            <div className="no-file-open-actions">
+                                <button onClick={handleCreateNewFile}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15.5 2H8.6c-.4 0-.8.2-1.1.5-.3.3-.5.7-.5 1.1V21c0 .6.4 1 1 1h12c.6 0 1-.4 1-1V8.5L15.5 2z"/><path d="M15 2v5h5"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>
+                                  <span>Create new file</span>
+                                </button>
+                                <button onClick={() => setShowCommandPalette(true)}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 6 4 4-4 4"/><path d="m6 18-4-4 4-4"/><path d="m14.5 4-5 16"/></svg>
+                                  <span>Open file</span>
+                                </button>
+                                <button onClick={() => handleFileSelect('welcome.md')}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15.5 2H8.6c-.4 0-.8.2-1.1.5-.3.3-.5.7-.5 1.1V21c0 .6.4 1 1 1h12c.6 0 1-.4 1-1V8.5L15.5 2z"/><path d="M15 2v5h5"/></svg>
+                                  <span>welcome.md</span>
+                                </button>
+                            </div>
                           </div>
                         )}
                       </div>
