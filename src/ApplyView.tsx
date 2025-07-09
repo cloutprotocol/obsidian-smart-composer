@@ -1,11 +1,10 @@
-import { ItemView, WorkspaceLeaf } from 'obsidian'
+import { ItemView, WorkspaceLeaf, TFile } from 'obsidian'
 import { Root, createRoot } from 'react-dom/client'
 
 import ApplyViewRoot from './components/apply-view/ApplyViewRoot'
 import { APPLY_VIEW_TYPE } from './constants'
 import { AppProvider } from './contexts/app-context'
 import { PluginProvider } from './contexts/plugin-context'
-import { TFile } from 'web-poc/src/lib/obsidian-api'
 
 export type ApplyViewState = {
   file: TFile
