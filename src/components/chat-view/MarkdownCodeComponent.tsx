@@ -15,7 +15,7 @@ export default function MarkdownCodeComponent({
   filename,
   children,
 }: PropsWithChildren<{
-  onApply: (blockToApply: string) => void
+  onApply: (blockToApply: string, filename?: string) => void
   isApplying: boolean
   language?: string
   filename?: string
@@ -91,7 +91,7 @@ export default function MarkdownCodeComponent({
               isApplying
                 ? undefined
                 : () => {
-                    onApply(String(children))
+                    onApply(String(children), filename)
                   }
             }
             aria-disabled={isApplying}

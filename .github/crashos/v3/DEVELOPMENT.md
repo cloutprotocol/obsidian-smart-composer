@@ -43,3 +43,14 @@ By implementing this shim, we can use PGlite (an ESM module) within our CommonJS
 ## Memory Leak During Plugin Reloading
 
 A memory leak has been identified when reloading the plugin. This may not be critical for end-users who typically don't reload the plugin frequently, but it can become problematic for developers who reload often during the development process. If you experience Obsidian becoming unresponsive or slow after reloading the plugin multiple times, it may be due to this memory leak. We are actively investigating the root cause and working on potential fixes. Any reports or fixes in this area are appreciated.
+
+## Apply View & Tab Focus Handling (Web-POC)
+
+The web POC now mirrors native Obsidian behaviour when a temporary **Apply** diff view is opened:
+
+1. When the user presses **Apply** we still create a transient `WorkspaceLeaf` to host the `ApplyView`.
+2. `Workspace.setActiveLeaf` now pushes the previous leaf onto an internal `leafHistory` stack.
+3. When the diff view closes, `Workspace.detachLeaf` pops the stack until it finds a still-open leaf and restores focus to it.
+4. If the Apply block specifies `filename="some/path.md"`, the plugin resolves that file in the vault and applies changes there, even if a different file is currently displayed.
+
+This focus logic is a lightweight stand-in for Obsidian’s true split-tree implementation. **TODO:** once split panes are ported, remove `leafHistory` and rely on each split remembering its active child.

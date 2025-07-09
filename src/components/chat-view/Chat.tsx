@@ -329,16 +329,26 @@ const Chat = forwardRef<ChatRef, ChatProps>((props, ref) => {
   const handleApply = async (
     blockToApply: string,
     chatMessages: ChatMessage[],
+    targetFilename?: string,
   ) => {
-    const activeFile = app.workspace.getActiveFile()
-    if (!activeFile) {
+    let targetFile: TFile | null = null
+
+    if (targetFilename) {
+      targetFile = app.vault.getFileByPath(targetFilename) ?? null
+    }
+
+    if (!targetFile) {
+      targetFile = app.workspace.getActiveFile()
+    }
+
+    if (!targetFile) {
       new Notice(
-        'No file is currently open to apply changes. Please open a file and try again.',
+        'No target file found to apply changes. Please open a file and try again.',
       )
       return
     }
 
-    const activeFileContent = await readTFileContent(activeFile, app.vault)
+    const targetFileContent = await readTFileContent(targetFile, app.vault)
 
     const { providerClient, model } = getChatModelClient({
       settings,
@@ -347,8 +357,8 @@ const Chat = forwardRef<ChatRef, ChatProps>((props, ref) => {
 
     applyChangesMutation({
       blockToApply,
-      currentFile: activeFile,
-      currentFileContent: activeFileContent,
+      currentFile: targetFile,
+      currentFileContent: targetFileContent,
       chatMessages,
       providerClient,
       model,

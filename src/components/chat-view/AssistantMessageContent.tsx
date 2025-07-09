@@ -19,12 +19,16 @@ export default function AssistantMessageContent({
 }: {
   content: ChatAssistantMessage['content']
   contextMessages: ChatMessage[]
-  handleApply: (blockToApply: string, chatMessages: ChatMessage[]) => void
+  handleApply: (
+    blockToApply: string,
+    chatMessages: ChatMessage[],
+    filename?: string,
+  ) => void
   isApplying: boolean
 }) {
   const onApply = useCallback(
-    (blockToApply: string) => {
-      handleApply(blockToApply, contextMessages)
+    (blockToApply: string, filename?: string) => {
+      handleApply(blockToApply, contextMessages, filename)
     },
     [handleApply, contextMessages],
   )
@@ -41,7 +45,7 @@ const AssistantTextRenderer = React.memo(function AssistantTextRenderer({
   isApplying,
   children,
 }: {
-  onApply: (blockToApply: string) => void
+  onApply: (blockToApply: string, filename?: string) => void
   children: string
   isApplying: boolean
 }) {
