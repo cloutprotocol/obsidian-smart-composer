@@ -31,7 +31,13 @@ function CopyButton({ messages }: { messages: AssistantToolMessageGroup }) {
   }, [messages])
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(content)
+    // Strip internal helper tags so the user gets clean Markdown
+    const sanitized = content
+      .replace(/<\/?smtcmp_block[^>]*>/g, '')
+      .replace(/<\/?think[^>]*>/g, '')
+      .trim()
+
+    await navigator.clipboard.writeText(sanitized)
     setCopied(true)
     setTimeout(() => {
       setCopied(false)
