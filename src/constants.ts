@@ -5,6 +5,9 @@ import { LLMProvider, LLMProviderType } from './types/provider.types'
 export const CHAT_VIEW_TYPE = 'smtcmp-chat-view'
 export const APPLY_VIEW_TYPE = 'smtcmp-apply-view'
 
+// Assistant branding
+export const ASSISTANT_NAME = 'micro'
+
 // Pricing in dollars per million tokens
 type ModelPricing = {
   input: number

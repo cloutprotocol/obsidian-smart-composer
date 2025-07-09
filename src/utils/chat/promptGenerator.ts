@@ -1,4 +1,5 @@
 import { App, TFile, htmlToMarkdown, requestUrl } from 'obsidian'
+import { ASSISTANT_NAME } from '../../constants'
 
 import { editorStateToPlainText } from '../../components/chat-view/chat-input/utils/editor-state-to-plain-text'
 import { QueryProgressState } from '../../components/chat-view/QueryProgress'
@@ -415,7 +416,7 @@ ${await this.getWebsiteContent(url)}
 
   private getSystemMessage(shouldUseRAG: boolean): RequestMessage {
     const modelPromptLevel = this.getModelPromptLevel()
-    const systemPrompt = `You are an intelligent assistant to help answer any questions that the user has${modelPromptLevel == PromptLevel.Default ? `, particularly about editing and organizing markdown files in Obsidian` : ''}.
+    const systemPrompt = `You are ${ASSISTANT_NAME}, an intelligent assistant to help answer any questions that the user has${modelPromptLevel == PromptLevel.Default ? `, particularly about editing and organizing markdown files` : ''}.
 
 1. Please keep your response as concise as possible. Avoid being verbose.
 
@@ -453,7 +454,7 @@ The user has full access to the file, so they prefer seeing only the changes in 
     : ''
 }`
 
-    const systemPromptRAG = `You are an intelligent assistant to help answer any questions that the user has${modelPromptLevel == PromptLevel.Default ? `, particularly about editing and organizing markdown files in Obsidian` : ''}. You will be given your conversation history with them and potentially relevant blocks of markdown content from the current vault.
+    const systemPromptRAG = `You are ${ASSISTANT_NAME}, an intelligent assistant to help answer any questions that the user has${modelPromptLevel == PromptLevel.Default ? `, particularly about editing and organizing markdown files` : ''}. You will be given your conversation history with them and potentially relevant blocks of markdown content from the current vault.
       
 1. Do not lie or make up facts.
 

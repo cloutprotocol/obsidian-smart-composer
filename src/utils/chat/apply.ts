@@ -1,6 +1,7 @@
 import { TFile } from 'obsidian'
 
 import { editorStateToPlainText } from '../../components/chat-view/chat-input/utils/editor-state-to-plain-text'
+import { ASSISTANT_NAME } from '../../constants'
 import { BaseLLMProvider } from '../../core/llm/base'
 import {
   ChatAssistantMessage,
@@ -15,7 +16,7 @@ import { LLMProvider } from '../../types/provider.types'
 
 const MAX_CHAT_HISTORY_MESSAGES = 10
 
-const systemPrompt = `You are an intelligent assistant helping a user apply changes to a markdown file.
+const systemPrompt = `You are ${ASSISTANT_NAME}, an intelligent assistant helping a user apply changes to a markdown file.
 
 You will receive:
 1. The content of the target markdown file.
